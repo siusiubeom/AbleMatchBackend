@@ -1,11 +1,14 @@
 server:
   port: 8090
 
+saramin:
+  api-key: "AAAAAAAAAAAA"
+
 spring:
   datasource:
     url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require
     username: postgres.isvgzypggsiopsrrljew
-    password: "ls1044802210"
+    password: ${POSTGRES_PASSWORD}
 
   jpa:
     hibernate:
@@ -26,3 +29,7 @@ spring:
 openai:
   api-key: ${OPENAI_API_KEY}
   model: gpt-4.1-mini
+
+jwt:
+  secret: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh
+

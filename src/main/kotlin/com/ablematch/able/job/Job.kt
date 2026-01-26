@@ -13,6 +13,8 @@ class Job(
 
     val title: String,
 
+    val company: String,
+
     @ElementCollection
     val requiredSkills: List<String>,
 

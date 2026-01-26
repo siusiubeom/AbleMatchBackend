@@ -1,5 +1,7 @@
 package com.ablematch.able.dto
 
+import java.util.UUID
+
 data class ResumeAIResult(
     val skills: List<String>,
     val accessibility_needs: List<String>,
@@ -37,4 +39,33 @@ data class RecommendedCourseDto(
     val skill: String,
     val title: String,
     val url: String
+)
+
+data class MatchingCardDto(
+    val jobId: UUID,
+    val title: String,
+    val company: String,
+    val score: Int,
+    val highlights: List<String>,
+    val workType: String
+)
+
+data class JobAIResult(
+    val title: String,
+    val requiredSkills: List<String>,
+    val accessibilityOptions: List<String>,
+    val workType: String
+)
+
+data class JobRawUploadRequest(
+    val company: String,
+    val text: String
+)
+
+data class MatchingExplainDto(
+    val jobTitle: String,
+    val score: Int,
+    val breakdown: Map<String, Int>,
+    val missingSkills: List<String>,
+    val impossibleReason: String?
 )

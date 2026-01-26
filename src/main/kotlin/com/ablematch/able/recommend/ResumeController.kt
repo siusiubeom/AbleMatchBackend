@@ -28,7 +28,7 @@ class ResumeController(
         val dbUser = userRepository.findByEmail(user.username)
             ?: throw RuntimeException("User not found")
 
-        val aiResult = openAiClient.extractResume(request.text)
+        val aiResult = openAiClient.extractResumeStructured(request.text)
 
         val resume = Resume(
             userId = dbUser.id!!,
