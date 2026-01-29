@@ -48,7 +48,6 @@ open class User protected constructor() {
 
     @OneToOne(
         mappedBy = "user",
-        cascade = [CascadeType.ALL],
         fetch = FetchType.LAZY
     )
     open var profile: UserProfile? = null
@@ -150,17 +149,17 @@ class ProfileFromResumeController(
             resumeTextExtractor.extract(file)
         )
 
-        val profile = profileRepository.findById(user.id!!)
-            .orElseGet {
-                UserProfile(
-                    id = user.id!!,
-                    user = user,
-                    name = extracted.name,
-                    major = extracted.major,
-                    gpa = extracted.gpa,
-                    preferredRole = extracted.preferredRole
-                )
-            }
+        val profile = profileRepository.findByUser(user)
+            ?: UserProfile(
+                id = user.id!!,
+                user = user,
+                name = extracted.name,
+                major = extracted.major,
+                gpa = extracted.gpa,
+                preferredRole = extracted.preferredRole
+            )
+
+        user.profile = profile
 
         profile.apply {
             name = extracted.name
@@ -171,6 +170,7 @@ class ProfileFromResumeController(
 
         return profileRepository.save(profile)
     }
+
 
 
 
