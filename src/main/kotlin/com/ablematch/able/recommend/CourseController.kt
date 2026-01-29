@@ -15,4 +15,10 @@ class CourseController(
     ): List<RecommendedCourseDto> {
         return listOf(courseService.recommendBySkill(skill))
     }
+    @GetMapping("/by-skills")
+    fun recommendBySkills(
+        @RequestParam skills: List<String>
+    ): List<RecommendedCourseDto> {
+        return courseService.recommendBySkills(skills)
+    }
 }

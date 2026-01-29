@@ -1,23 +1,43 @@
 package com.ablematch.able.resume
 
+import jakarta.persistence.Column
 import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
 import java.util.UUID
 
 @Entity
-class Resume(
-    @Id @GeneratedValue
-    val id: UUID? = null,
+open class Resume protected constructor() {
 
-    val userId: UUID,
+    @Id
+    @GeneratedValue
+    open var id: UUID? = null
 
-    @ElementCollection
-    val skills: List<String>,
+    @Column(name = "user_id", nullable = false)
+    open lateinit var userId: UUID
 
-    @ElementCollection
-    val accessibilityNeeds: List<String>,
+    @Column(nullable = false)
+    open lateinit var workType: String
 
-    val workType: String
-)
+    @ElementCollection(fetch = FetchType.EAGER)
+    var accessibilityNeeds: List<String> = mutableListOf()
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    var skills: List<String> = mutableListOf()
+
+    constructor(
+        userId: UUID,
+        skills: List<String>,
+        accessibilityNeeds: List<String>,
+        workType: String
+    ) : this() {
+        this.userId = userId
+        this.skills = skills
+        this.accessibilityNeeds = accessibilityNeeds
+        this.workType = workType
+    }
+}
+
+

@@ -14,6 +14,7 @@ class CourseRecommendationService {
         )
     }
 
+
     fun recommendBySkills(skills: List<String>): List<RecommendedCourseDto> {
         return skills.map { recommendBySkill(it) }
     }

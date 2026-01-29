@@ -26,13 +26,15 @@ class MatchingController(
     @GetMapping
     fun getMatching(
         @AuthenticationPrincipal user: UserDetails
-    ): List<MatchingCardDto> {
+    ): MatchingResponse {
 
         val dbUser = userRepository.findByEmail(user.username)
             ?: throw RuntimeException("User not found")
 
         return matchingService.match(dbUser.id!!)
     }
+
+
 
     @GetMapping("/{jobId}/explain")
     fun explain(
@@ -41,7 +43,8 @@ class MatchingController(
     ): MatchingExplainDto {
         val u = userRepository.findByEmail(user.username)!!
         val resume = resumeRepository.findByUserId(u.id!!)!!
-        val job = jobRepository.findById(jobId).orElseThrow()
+        val job = jobRepository.findByIdWithDetails(jobId)
+            ?: throw RuntimeException("Job not found")
         return matchingService.explain(resume, job)
     }
 

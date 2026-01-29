@@ -2,6 +2,7 @@ package com.ablematch.able.matching
 
 import com.ablematch.able.dto.MatchingCardDto
 import com.ablematch.able.dto.MatchingExplainDto
+import com.ablematch.able.dto.MatchingWeightService
 import com.ablematch.able.dto.MatchingWithCoursesDto
 import com.ablematch.able.job.Job
 import com.ablematch.able.job.JobRepository
@@ -14,56 +15,81 @@ import java.util.UUID
 @Service
 class MatchingService(
     private val resumeRepo: ResumeRepository,
-    private val jobRepo: JobRepository
+    private val jobRepo: JobRepository,
+    private val weightService: MatchingWeightService
 ) {
 
-    fun match(userId: UUID): List<MatchingCardDto> {
+    fun match(userId: UUID): MatchingResponse {
         val resume = resumeRepo.findByUserId(userId)
-            ?: throw RuntimeException("Resume not found")
+            ?: return MatchingResponse(MatchingStatus.NO_RESUME)
 
-        return jobRepo.findAll()
-            .mapNotNull { job ->
-                val impossible =
-                    resume.accessibilityNeeds.contains("휠체어") &&
-                            !job.accessibilityOptions.contains("엘리베이터")
+        val jobs = jobRepo.findAllWithDetails()
+        if (jobs.isEmpty()) {
+            return MatchingResponse(MatchingStatus.NO_JOBS)
+        }
 
-                if (impossible) return@mapNotNull null
+        val results = jobs.mapNotNull { job ->
+            val impossible =
+                resume.accessibilityNeeds.contains("휠체어") &&
+                        !job.accessibilityOptions.contains("엘리베이터")
 
-                val score = calculate(resume, job)
+            if (impossible) return@mapNotNull null
 
-                MatchingCardDto(
-                    jobId = job.id!!,
-                    title = job.title,
-                    company = "비공개", // MVP
-                    score = score,
-                    highlights = buildHighlights(resume, job),
-                    workType = job.workType
-                )
-            }
-            .sortedByDescending { it.score }
+            val score = calculate(resume, job)
+
+            MatchingCardDto(
+                jobId = job.id!!,
+                title = job.title,
+                company = job.company,
+                score = score,
+                highlights = buildHighlights(resume, job),
+                workType = job.workType,
+                sourceUrl = job.sourceUrl
+            )
+        }.sortedByDescending { it.score }
+
+        if (results.isEmpty()) {
+            return MatchingResponse(MatchingStatus.NO_MATCH)
+        }
+
+        return MatchingResponse(MatchingStatus.READY, results)
     }
+
+
 
     private fun calculate(resume: Resume, job: Job): Int {
-        val skillScore = resume.skills.intersect(job.requiredSkills).size * 10
-        val accessibilityScore =
-            resume.accessibilityNeeds.intersect(job.accessibilityOptions).size * 15
-        val workTypeScore = if (resume.workType == job.workType) 20 else 0
+        val w = weightService.get()
 
-        return (skillScore + accessibilityScore + workTypeScore)
-            .coerceAtMost(100)
+        val skillScore =
+            resume.skills.intersect(job.requiredSkills).size * w.skillWeight
+
+        val accessibilityScore =
+            resume.accessibilityNeeds.intersect(job.accessibilityOptions).size * w.accessibilityWeight
+
+        val workTypeScore =
+            if (resume.workType == job.workType) w.workTypeWeight else 0
+
+        val rawScore = skillScore + accessibilityScore + workTypeScore
+
+        val scaledScore = (rawScore * 1.3) + 45
+
+        return scaledScore
+            .coerceIn(55.0, 88.0).toInt()
     }
+
+
 
     private fun buildHighlights(resume: Resume, job: Job): List<String> {
         val highlights = mutableListOf<String>()
 
         if (resume.skills.intersect(job.requiredSkills).isNotEmpty())
-            highlights.add("스킬 일치")
+            highlights.add("전공 일치")
 
-        if (resume.workType == job.workType)
-            highlights.add("근무 형태 일치")
+        if (job.workType == "REMOTE")
+            highlights.add("재택 가능")
 
         if (resume.accessibilityNeeds.intersect(job.accessibilityOptions).isNotEmpty())
-            highlights.add("배리어프리 환경")
+            highlights.add("배리어프리")
 
         return highlights
     }
@@ -107,4 +133,16 @@ class MatchingService(
 
 
 }
+
+enum class MatchingStatus {
+    NO_RESUME,
+    NO_JOBS,
+    NO_MATCH,
+    READY
+}
+
+data class MatchingResponse(
+    val status: MatchingStatus,
+    val data: List<MatchingCardDto> = emptyList()
+)
 

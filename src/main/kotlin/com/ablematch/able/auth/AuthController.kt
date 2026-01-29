@@ -1,5 +1,9 @@
 package com.ablematch.able.auth
 
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.*
 
@@ -11,15 +15,27 @@ class AuthController(
     private val jwtProvider: JwtProvider
 ) {
 
+
     @PostMapping("/signup")
-    fun signup(@RequestBody request: SignupRequest): User {
+    fun signup(@RequestBody request: SignupRequest): ResponseEntity<Any> {
+
+        if (userRepository.existsByEmail(request.email)) {
+            return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(mapOf("message" to "이미 존재하는 이메일입니다."))
+        }
+
         val user = User(
             email = request.email,
             password = passwordEncoder.encode(request.password),
             role = "USER"
         )
-        return userRepository.save(user)
+
+        userRepository.save(user)
+
+        return ResponseEntity.ok().build()
     }
+
 
     @PostMapping("/login")
     fun login(@RequestBody request: SignupRequest): TokenResponse {

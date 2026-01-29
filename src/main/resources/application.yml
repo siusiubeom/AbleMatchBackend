@@ -1,19 +1,25 @@
 server:
   port: 8090
 
-saramin:
-  api-key: "AAAAAAAAAAAA"
-
 spring:
   datasource:
     url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require
     username: postgres.isvgzypggsiopsrrljew
     password: ${POSTGRES_PASSWORD}
+    hikari:
+      data-source-properties:
+        prepareThreshold: 0
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
+
 
 
     properties:
@@ -32,4 +38,10 @@ openai:
 
 jwt:
   secret: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh
+
+logging:
+  level:
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql: OFF
+    com.ablematch.able: OFF
 

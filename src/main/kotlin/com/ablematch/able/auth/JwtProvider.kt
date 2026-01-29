@@ -50,6 +50,11 @@ class JwtFilter(
     private val userService: UserService
 ) : OncePerRequestFilter() {
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI
+        return path.startsWith("/auth/")
+    }
+
     override fun doFilterInternal(
         req: HttpServletRequest,
         res: HttpServletResponse,
@@ -57,12 +62,12 @@ class JwtFilter(
     ) {
         val header = req.getHeader("Authorization")
 
-        if (header?.startsWith("Bearer ") == true) {
-            val token = header.substring(7)
-
+        if (header != null && header.startsWith("Bearer ")) {
             try {
+                val token = header.substring(7)
                 val email = jwtProvider.getEmail(token)
                 val user = userService.loadUserByUsername(email)
+
                 val auth = UsernamePasswordAuthenticationToken(
                     user,
                     null,
@@ -76,6 +81,5 @@ class JwtFilter(
 
         chain.doFilter(req, res)
     }
-
 }
 
