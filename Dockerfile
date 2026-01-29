@@ -6,10 +6,10 @@ COPY gradle gradle
 COPY build.gradle.kts settings.gradle.kts ./
 
 RUN chmod +x gradlew
-
 RUN ./gradlew dependencies
 
 COPY . .
+RUN chmod +x gradlew
 RUN ./gradlew build -x test
 
 FROM eclipse-temurin:17-jre
@@ -17,5 +17,5 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8090
 ENTRYPOINT ["java", "-jar", "app.jar"]
