@@ -42,8 +42,8 @@ class ResumeController(
 
         val existing = resumeRepository.findByUserId(dbUser.id!!)
         if (existing != null) {
-            existing.skills = aiResult.skills
-            existing.accessibilityNeeds = aiResult.accessibility_needs
+            existing.skills = aiResult.skills as MutableList<String>
+            existing.accessibilityNeeds = aiResult.accessibility_needs as MutableList<String>
             existing.workType = aiResult.work_type
             return resumeRepository.save(existing)
         }

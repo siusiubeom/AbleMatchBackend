@@ -22,10 +22,10 @@ open class Resume protected constructor() {
     open lateinit var workType: String
 
     @ElementCollection(fetch = FetchType.EAGER)
-    var accessibilityNeeds: List<String> = mutableListOf()
+    open var accessibilityNeeds: MutableList<String> = mutableListOf()
 
     @ElementCollection(fetch = FetchType.EAGER)
-    var skills: List<String> = mutableListOf()
+    open var skills: MutableList<String> = mutableListOf()
 
     constructor(
         userId: UUID,
@@ -34,10 +34,8 @@ open class Resume protected constructor() {
         workType: String
     ) : this() {
         this.userId = userId
-        this.skills = skills
-        this.accessibilityNeeds = accessibilityNeeds
+        this.skills = skills.toMutableList()
+        this.accessibilityNeeds = accessibilityNeeds.toMutableList()
         this.workType = workType
     }
 }
-
-

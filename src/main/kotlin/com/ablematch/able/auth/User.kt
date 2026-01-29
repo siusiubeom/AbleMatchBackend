@@ -48,9 +48,11 @@ open class User protected constructor() {
 
     @OneToOne(
         mappedBy = "user",
-        fetch = FetchType.LAZY
+        fetch = FetchType.LAZY,
+        cascade = [CascadeType.PERSIST, CascadeType.MERGE]
     )
     open var profile: UserProfile? = null
+
 
     constructor(
         email: String,
@@ -141,25 +143,20 @@ class ProfileFromResumeController(
         @RequestParam("file") file: MultipartFile
     ): UserProfile {
 
-        val email = authentication.name
-        val user = userRepository.findByEmail(email)
+        val user = userRepository.findByEmail(authentication.name)
             ?: throw RuntimeException("User not found")
 
         val extracted = profileExtractor.extract(
             resumeTextExtractor.extract(file)
         )
 
-        val profile = profileRepository.findByUser(user)
-            ?: UserProfile(
-                id = user.id!!,
-                user = user,
-                name = extracted.name,
-                major = extracted.major,
-                gpa = extracted.gpa,
-                preferredRole = extracted.preferredRole
-            )
-
-        user.profile = profile
+        val profile = user.profile ?: UserProfile(
+            user = user,
+            name = extracted.name,
+            major = extracted.major,
+            gpa = extracted.gpa,
+            preferredRole = extracted.preferredRole
+        )
 
         profile.apply {
             name = extracted.name
@@ -168,7 +165,10 @@ class ProfileFromResumeController(
             preferredRole = extracted.preferredRole
         }
 
-        return profileRepository.save(profile)
+        user.profile = profile
+        userRepository.save(user)
+
+        return profile
     }
 
 
