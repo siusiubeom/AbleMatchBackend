@@ -17,7 +17,7 @@ java {
 }
 
 springBoot {
-    mainClass.set("com.ablematch.able.AbleApplicationKt")
+    mainClass.set("com.ablematch.able.AbleApplication")
 }
 
 repositories {
