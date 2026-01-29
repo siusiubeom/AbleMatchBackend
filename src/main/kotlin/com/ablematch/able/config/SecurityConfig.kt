@@ -53,7 +53,7 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration()
-        config.allowedOrigins = listOf("http://localhost:3000", "ablematchfrontend.vercel.app")
+        config.allowedOrigins = listOf("http://localhost:3000", "https://ablematchfrontend.vercel.app")
         config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
         config.allowedHeaders = listOf("*")
         config.allowCredentials = true
