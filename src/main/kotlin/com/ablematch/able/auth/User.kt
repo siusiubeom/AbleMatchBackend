@@ -150,15 +150,17 @@ class ProfileFromResumeController(
             resumeTextExtractor.extract(file)
         )
 
-        val profile = profileRepository.findByUser(user)
-            ?: UserProfile(
-                id = user.id,
-                user = user,
-                name = extracted.name,
-                major = extracted.major,
-                gpa = extracted.gpa,
-                preferredRole = extracted.preferredRole
-            )
+        val profile = profileRepository.findById(user.id!!)
+            .orElseGet {
+                UserProfile(
+                    id = user.id!!,
+                    user = user,
+                    name = extracted.name,
+                    major = extracted.major,
+                    gpa = extracted.gpa,
+                    preferredRole = extracted.preferredRole
+                )
+            }
 
         profile.apply {
             name = extracted.name
@@ -169,6 +171,7 @@ class ProfileFromResumeController(
 
         return profileRepository.save(profile)
     }
+
 
 
 
