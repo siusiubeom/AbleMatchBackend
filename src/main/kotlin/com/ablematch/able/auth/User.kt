@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.MapsId
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
+import jakarta.transaction.Transactional
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.Authentication
@@ -135,23 +136,23 @@ class ProfileFromResumeController(
 
 
     @PostMapping("/profile/from-resume")
+    @Transactional
     fun updateFromResume(
         authentication: Authentication,
         @RequestParam("file") file: MultipartFile
     ): UserProfile {
 
-        println("🔥 ENTERED updateFromResume")
-
         val email = authentication.name
         val user = userRepository.findByEmail(email)
             ?: throw RuntimeException("User not found")
 
-        val resumeText = resumeTextExtractor.extract(file)
-
-        val extracted = profileExtractor.extract(resumeText)
+        val extracted = profileExtractor.extract(
+            resumeTextExtractor.extract(file)
+        )
 
         val profile = profileRepository.findByUser(user)
             ?: UserProfile(
+                id = user.id,
                 user = user,
                 name = extracted.name,
                 major = extracted.major,
@@ -168,6 +169,7 @@ class ProfileFromResumeController(
 
         return profileRepository.save(profile)
     }
+
 
 
 

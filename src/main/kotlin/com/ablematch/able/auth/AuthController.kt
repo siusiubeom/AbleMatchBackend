@@ -1,5 +1,6 @@
 package com.ablematch.able.auth
 
+import jakarta.transaction.Transactional
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,6 +18,7 @@ class AuthController(
 
 
     @PostMapping("/signup")
+    @Transactional
     fun signup(@RequestBody request: SignupRequest): ResponseEntity<Any> {
 
         if (userRepository.existsByEmail(request.email)) {
