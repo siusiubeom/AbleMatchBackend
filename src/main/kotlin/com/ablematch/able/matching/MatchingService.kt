@@ -10,6 +10,7 @@ import com.ablematch.able.job.JobRepository
 import com.ablematch.able.recommend.CourseRecommendationService
 import com.ablematch.able.resume.Resume
 import com.ablematch.able.resume.ResumeRepository
+import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -19,12 +20,12 @@ class MatchingService(
     private val jobRepo: JobRepository,
     private val weightService: MatchingWeightService
 ) {
-
+    @Transactional()
     fun match(userId: UUID): MatchingResponse {
         val resume = resumeRepo.findByUserId(userId)
             ?: return MatchingResponse(MatchingStatus.NO_RESUME)
 
-        val jobs = jobRepo.findAllSimple()
+        val jobs = jobRepo.findAllWithDetails()
         if (jobs.isEmpty()) return MatchingResponse(MatchingStatus.NO_JOBS)
 
         val weights = weightService.get()
