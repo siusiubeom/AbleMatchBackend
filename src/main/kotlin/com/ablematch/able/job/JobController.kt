@@ -174,6 +174,7 @@ class WebScrapingClient {
             .timeout(10_000)
             .get()
 
+
         val title = doc.selectFirst("header h1")?.text()
         val company = doc.selectFirst("header a[href*=\"company\"]")?.text()
             ?: doc.selectFirst("header span")?.text()
@@ -219,7 +220,8 @@ class SeleniumScrapingClient {
 class JobBatchScheduler(
     private val jobSourceRepo: JobSourceRepository,
     private val wantedListFetcher: WantedListFetcher,
-    private val jobController: JobController
+    private val jobController: JobController,
+    private val jobRepository: JobRepository
 ) {
     private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
     @Scheduled(
@@ -248,6 +250,13 @@ class JobBatchScheduler(
                         log.info("[SCRAPE] start url={}", url)
                         jobController.scrapeAndUpsert(url, source.company)
                     }
+
+                    if (urls.isNotEmpty()) {
+                        val deleted = jobRepository.deleteDeadJobs(urls)
+                        log.info("[WANTED] deleted {} dead jobs", deleted)
+                    } else {
+                        log.warn("[WANTED] urls empty → skip deleteDeadJobs()")
+                    }
                 }
                 else -> log.info("[SCHEDULER] unsupported platform={}", source.platform)
             }
@@ -255,7 +264,6 @@ class JobBatchScheduler(
     }
 }
 
-// ---------- Wanted List ----------
 @Component
 class WantedListFetcher(
     private val restTemplate: RestTemplate
@@ -325,6 +333,8 @@ class WantedListFetcher(
             WantedApiResponse::class.java
         )
 
+
+
         return response.body
             ?: throw IllegalStateException("Wanted API returned null body")
     }
@@ -334,7 +344,6 @@ class WantedListFetcher(
 
 
 
-// ---------- Utils ----------
 fun normalizeUrl(url: String): String {
     val uri = URI(url)
     return URI(uri.scheme, uri.host, uri.path, null).toString()
