@@ -2,6 +2,7 @@ package com.ablematch.able.matching
 
 import com.ablematch.able.dto.MatchingCardDto
 import com.ablematch.able.dto.MatchingExplainDto
+import com.ablematch.able.dto.MatchingWeight
 import com.ablematch.able.dto.MatchingWeightService
 import com.ablematch.able.dto.MatchingWithCoursesDto
 import com.ablematch.able.job.Job
@@ -23,42 +24,64 @@ class MatchingService(
         val resume = resumeRepo.findByUserId(userId)
             ?: return MatchingResponse(MatchingStatus.NO_RESUME)
 
-        val jobs = jobRepo.findAllWithDetails()
-        if (jobs.isEmpty()) {
-            return MatchingResponse(MatchingStatus.NO_JOBS)
-        }
+        val jobs = jobRepo.findAllSimple()
+        if (jobs.isEmpty()) return MatchingResponse(MatchingStatus.NO_JOBS)
 
-        val results = jobs.mapNotNull { job ->
-            val impossible =
-                resume.accessibilityNeeds.contains("휠체어") &&
-                        !job.accessibilityOptions.contains("엘리베이터")
+        val weights = weightService.get()
 
-            if (impossible) return@mapNotNull null
+        val resumeSkills = resume.skills.toSet()
+        val resumeAccess = resume.accessibilityNeeds.toSet()
+        val resumeWorkType = resume.workType
 
-            val score = calculate(resume, job)
 
-            MatchingCardDto(
-                jobId = job.id!!,
-                title = job.title,
-                company = job.company,
-                score = score,
-                highlights = buildHighlights(resume, job),
-                workType = job.workType,
-                sourceUrl = job.sourceUrl
-            )
-        }.sortedByDescending { it.score }
+        val results = jobs.asSequence()
+            .mapNotNull { job ->
+                val jobAccessSet = job.accessibilityOptions.toSet()
+                val jobSkillSet = job.requiredSkills // already Set
 
-        if (results.isEmpty()) {
+                if (isImpossibleFast(resumeAccess, resumeWorkType, jobAccessSet, job.workType))
+                    return@mapNotNull null
+
+                val score = calculateFast(
+                    resumeSkills,
+                    resumeAccess,
+                    resumeWorkType,
+                    jobSkillSet,
+                    jobAccessSet,
+                    job.workType,
+                    weights
+                )
+
+                MatchingCardDto(
+                    jobId = job.id!!,
+                    title = job.title,
+                    company = job.company,
+                    score = score,
+                    highlights = buildHighlightsFast(
+                        resumeSkills,
+                        resumeAccess,
+                        jobSkillSet,
+                        jobAccessSet,
+                        job.workType
+                    ),
+                    workType = job.workType,
+                    sourceUrl = job.sourceUrl
+                )
+            }
+            .sortedByDescending { it.score }
+            .take(20)
+            .toList()
+
+
+        if (results.isEmpty())
             return MatchingResponse(MatchingStatus.NO_MATCH)
-        }
 
         return MatchingResponse(MatchingStatus.READY, results)
     }
 
 
 
-    private fun calculate(resume: Resume, job: Job): Int {
-        val w = weightService.get()
+    private fun calculate(resume: Resume, job: Job, w: MatchingWeight): Int {
 
         val skillScore =
             resume.skills.intersect(job.requiredSkills).size * w.skillWeight
@@ -145,4 +168,67 @@ data class MatchingResponse(
     val status: MatchingStatus,
     val data: List<MatchingCardDto> = emptyList()
 )
+
+private fun isImpossibleFast(
+    resumeAccess: Set<String>,
+    resumeWorkType: String,
+    jobAccess: Set<String>,
+    jobWorkType: String
+): Boolean {
+
+    if ("휠체어" in resumeAccess && "엘리베이터" !in jobAccess)
+        return true
+
+    if (resumeWorkType == "REMOTE" && jobWorkType == "ONSITE")
+        return true
+
+    return false
+}
+
+
+private fun buildHighlightsFast(
+    resumeSkills: Set<String>,
+    resumeAccess: Set<String>,
+    jobSkills: Set<String>,
+    jobAccess: Set<String>,
+    jobWorkType: String
+): List<String> {
+
+    val highlights = ArrayList<String>(3)
+
+    if (resumeSkills.any { it in jobSkills })
+        highlights.add("전공 일치")
+
+    if (jobWorkType == "REMOTE")
+        highlights.add("재택 가능")
+
+    if (resumeAccess.any { it in jobAccess })
+        highlights.add("배리어프리")
+
+    return highlights
+}
+
+
+private fun calculateFast(
+    resumeSkills: Set<String>,
+    resumeAccess: Set<String>,
+    resumeWorkType: String,
+    jobSkills: Set<String>,
+    jobAccess: Set<String>,
+    jobWorkType: String,
+    w: MatchingWeight
+): Int {
+
+    val skillScore =
+        resumeSkills.count { it in jobSkills } * w.skillWeight
+
+    val accessScore =
+        resumeAccess.count { it in jobAccess } * w.accessibilityWeight
+
+    val workScore =
+        if (resumeWorkType == jobWorkType) w.workTypeWeight else 0
+
+    val raw = skillScore + accessScore + workScore
+    return ((raw * 1.3) + 45).coerceIn(55.0, 88.0).toInt()
+}
 

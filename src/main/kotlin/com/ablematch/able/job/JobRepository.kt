@@ -19,6 +19,9 @@ interface JobRepository : JpaRepository<Job, UUID> {
     @Query("delete from Job j where j.sourceUrl not in :urls")
     fun deleteDeadJobs(urls: List<String>): Int
 
+    @Query("select j from Job j")
+    fun findAllSimple(): List<Job>
+
 }
 
 interface JobSourceRepository : JpaRepository<JobSource, UUID> {

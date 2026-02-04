@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
+import org.hibernate.annotations.BatchSize
 import java.time.Instant
 import java.util.UUID
 
@@ -25,10 +26,12 @@ open class Job protected constructor() {
     @Column(nullable = false)
     open lateinit var sourceUrl: String
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     open var requiredSkills: Set<String> = mutableSetOf()
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     open var accessibilityOptions: List<String> = mutableListOf()
 
     open lateinit var workType: String
