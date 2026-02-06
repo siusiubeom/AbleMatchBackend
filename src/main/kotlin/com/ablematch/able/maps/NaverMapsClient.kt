@@ -1,10 +1,12 @@
 package com.ablematch.able.maps
 
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientResponseException
 import org.springframework.web.util.UriComponentsBuilder
 
 @Component
@@ -14,11 +16,12 @@ class NaverMapsClient(
     @Value("\${naver.maps.key}") private val key: String,
 ) {
 
+    private val log = LoggerFactory.getLogger(NaverMapsClient::class.java)
+
     private val client = RestClient.builder()
         .baseUrl(baseUrl)
-        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
         .build()
-
 
     fun geocode(query: String, coordinate: String? = null): GeocodeResponse {
         val uri = UriComponentsBuilder
@@ -28,13 +31,28 @@ class NaverMapsClient(
             .build()
             .encode()
             .toUriString()
-        return client.get()
-            .uri(uri)
-            .header("X-NCP-APIGW-API-KEY-ID", keyId)
-            .header("X-NCP-APIGW-API-KEY", key)
-            .retrieve()
-            .body(GeocodeResponse::class.java)
-            ?: error("Geocode response null")
+
+        log.info("NAVER GEOCODE uri={}", uri)
+        log.info("NAVER KEY ID (prefix)={}", keyId.take(6))
+        log.info("NAVER KEY (prefix)={}", key.take(6))
+
+        return try {
+            val raw = client.get()
+                .uri(uri)
+                .header("X-NCP-APIGW-API-KEY-ID", keyId)
+                .header("X-NCP-APIGW-API-KEY", key)
+                .retrieve()
+                .body(String::class.java)
+                ?: error("Geocode raw body null")
+
+            log.info("NAVER GEOCODE RAW BODY={}", raw)
+
+            val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+            mapper.readValue(raw, GeocodeResponse::class.java)
+        } catch (e: RestClientResponseException) {
+            log.error("NAVER GEOCODE HTTP {} body={}", e.rawStatusCode, e.responseBodyAsString)
+            throw e
+        }
     }
 
     fun reverseGeocode(lat: Double, lng: Double): ReverseGeocodeResponse {

@@ -39,6 +39,13 @@ class DistanceService(
         log.info("GEOCODE CLEANED: {}", cleaned)
 
         val cleanRes = naver.geocode(cleaned).addresses.firstOrNull()
+        val resp = naver.geocode(address)
+        log.info("GEOCODE parsed status={} error={} addrCount={}",
+            resp.status, resp.errorMessage, resp.addresses.size)
+
+        val first = resp.addresses.firstOrNull()
+        log.info("GEOCODE first road={} x={} y={}",
+            first?.roadAddress, first?.x, first?.y)
         val cleanLatLng = toLatLng(cleanRes)
         if (cleanLatLng != null) {
             log.info("GEOCODE SUCCESS CLEANED -> {}", cleanLatLng)
