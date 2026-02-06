@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
+import java.io.File
 import java.util.UUID
 
 @Entity
@@ -165,17 +166,29 @@ class ProfileFromResumeController(
     @PostMapping("/profile/image")
     fun updateProfileImage(
         authentication: Authentication,
-        @RequestBody body: Map<String, String>
+        @RequestParam("file") file: MultipartFile
     ): UserProfile {
 
         val user = userRepository.findByEmail(authentication.name)!!
         val profile = profileRepository.findByUser(user)!!
 
-        profile.profileImageUrl = body["url"]
-            ?: throw RuntimeException("url missing")
+        if (file.isEmpty) {
+            throw RuntimeException("file missing")
+        }
+
+        val uploadsDir = File("uploads")
+        if (!uploadsDir.exists()) uploadsDir.mkdirs()
+
+        val filename = "${UUID.randomUUID()}_${file.originalFilename}"
+        val dest = File(uploadsDir, filename)
+
+        file.transferTo(dest)
+
+        profile.profileImageUrl = "/uploads/$filename"
 
         return profileRepository.save(profile)
     }
+
 
 
 
