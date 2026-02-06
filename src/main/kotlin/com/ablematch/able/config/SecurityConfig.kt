@@ -39,14 +39,14 @@ class SecurityConfig(
             .sessionManagement {
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
-
             .authorizeHttpRequests {
                 it.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 it.requestMatchers("/auth/**").permitAll()
                 it.requestMatchers("/error").permitAll()
-                it.requestMatchers("/api/**").authenticated()
                 it.requestMatchers("/api/community/feed").permitAll()
                 it.requestMatchers("/api/jobs/board/**").permitAll()
+                it.requestMatchers("/api/**").authenticated()
+
                 it.requestMatchers("/uploads/**").permitAll()
             }
 
