@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
+import jakarta.transaction.Transactional
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -103,6 +104,7 @@ class CommunityController(
     }
 
     @GetMapping("/feed")
+    @Transactional
     fun feed(): List<FeedPostDto> =
         postRepo.findAll()
             .sortedByDescending { it.createdAt }
