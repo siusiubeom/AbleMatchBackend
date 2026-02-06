@@ -10,6 +10,13 @@ import org.springframework.web.bind.annotation.RestController
 class MapsController(
     private val distanceService: DistanceService
 ) {
+    @GetMapping("/estimate-test")
+    fun estimateTest(): DistanceEstimateResult {
+        return distanceService.estimateByAddresses(
+            originAddress = "서울특별시 강남구 테헤란로 152",
+            destinationAddress = "서울특별시 마포구 마포대로 122"
+        )
+    }
     @GetMapping("/geocode")
     fun geocode(
         @RequestParam query: String
