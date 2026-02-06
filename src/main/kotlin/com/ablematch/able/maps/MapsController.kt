@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/maps")
 class MapsController(
-    private val distanceService: DistanceService
+    private val distanceService: DistanceService,
+    private val naver: NaverMapsClient
 ) {
     @GetMapping("/estimate-test")
     fun estimateTest(): DistanceEstimateResult {
@@ -16,6 +17,10 @@ class MapsController(
             originAddress = "서울특별시 강남구 테헤란로 152",
             destinationAddress = "서울특별시 마포구 마포대로 122"
         )
+    }
+    @GetMapping("/geocode-debug")
+    fun geocodeDebug(@RequestParam q: String): String {
+        return naver.geocodeRaw(q)
     }
     @GetMapping("/geocode")
     fun geocode(

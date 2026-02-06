@@ -23,13 +23,28 @@ class NaverMapsClient(
         .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
         .build()
 
+    fun geocodeRaw(query: String): String {
+        val uri = UriComponentsBuilder
+            .fromPath("/map-geocode/v2/geocode")
+            .queryParam("query", query)
+            .build()
+            .toUriString()
+
+        return client.get()
+            .uri(uri)
+            .header("X-NCP-APIGW-API-KEY-ID", keyId)
+            .header("X-NCP-APIGW-API-KEY", key)
+            .retrieve()
+            .body(String::class.java)
+            ?: ""
+    }
+
     fun geocode(query: String, coordinate: String? = null): GeocodeResponse {
         val uri = UriComponentsBuilder
             .fromPath("/map-geocode/v2/geocode")
             .queryParam("query", query)
             .apply { if (!coordinate.isNullOrBlank()) queryParam("coordinate", coordinate) }
             .build()
-            .encode()
             .toUriString()
 
         log.info("NAVER GEOCODE uri={}", uri)
@@ -62,7 +77,6 @@ class NaverMapsClient(
             .queryParam("orders", "roadaddr")
             .queryParam("output", "json")
             .build()
-            .encode()
             .toUriString()
 
         return client.get()
@@ -82,7 +96,6 @@ class NaverMapsClient(
             .queryParam("goal", goal)
             .queryParam("option", option)
             .build()
-            .encode()
             .toUriString()
         println("NAVER KEY ID = $keyId")
         println("NAVER KEY = $key")
