@@ -47,6 +47,6 @@ logging:
 
 naver:
   maps:
-    base-url: https://naveropenapi.apigw.ntruss.com
+    base-url: https://maps.apigw.ntruss.com
     key-id: ${NAVER_MAPS_KEY_ID}
     key: ${NAVER_MAPS_KEY}
