@@ -22,6 +22,10 @@ interface JobRepository : JpaRepository<Job, UUID> {
     @Query("select j from Job j")
     fun findAllSimple(): List<Job>
 
+    @Query("select j from Job j")
+    fun findAllForBoard(): List<Job>
+
+
 }
 
 interface JobSourceRepository : JpaRepository<JobSource, UUID> {

@@ -1,6 +1,7 @@
 package com.ablematch.able.job
 
 import com.ablematch.able.ai.OpenAiClient
+import com.ablematch.able.maps.JobBoardDto
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.openqa.selenium.By
@@ -20,6 +21,7 @@ import java.net.URI
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -368,3 +370,45 @@ fun inferSkillsFromText(text: String): Set<String> =
         "Problem Solving",
         "Time Management"
     ).filter { text.contains(it, ignoreCase = true) }.toSet()
+
+@RestController
+@RequestMapping("/api/jobs/board")
+class JobBoardController(
+    private val jobRepo: JobRepository
+) {
+
+    @GetMapping
+    fun board(
+        @RequestParam(defaultValue = "latest") sort: String
+    ): List<JobBoardDto> {
+
+        val jobs = jobRepo.findAllForBoard()
+
+        val sorted = when (sort) {
+            "popular" -> jobs.sortedByDescending { it.viewCount }
+            "likes" -> jobs.sortedByDescending { it.likeCount }
+            "company" -> jobs.sortedBy { it.company }
+            else -> jobs.sortedByDescending { it.lastFetchedAt }
+        }
+
+        return sorted.map {
+            JobBoardDto(
+                id = it.id!!,
+                title = it.title,
+                company = it.company,
+                workType = it.workType,
+                sourceUrl = it.sourceUrl,
+                viewCount = it.viewCount,
+                likeCount = it.likeCount
+            )
+        }
+    }
+
+    @PostMapping("/{id}/view")
+    fun incrementView(@PathVariable id: UUID) {
+        val job = jobRepo.findById(id).orElseThrow()
+        job.viewCount += 1
+        jobRepo.save(job)
+    }
+
+}

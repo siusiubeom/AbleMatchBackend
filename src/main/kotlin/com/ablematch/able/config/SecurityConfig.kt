@@ -43,6 +43,8 @@ class SecurityConfig(
                 it.requestMatchers("/auth/**").permitAll()
                 it.requestMatchers("/error").permitAll()
                 it.requestMatchers("/api/**").authenticated()
+                it.requestMatchers("/api/community/feed").permitAll()
+                it.requestMatchers("/api/jobs/board/**").permitAll()
             }
 
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
@@ -62,5 +64,7 @@ class SecurityConfig(
         source.registerCorsConfiguration("/**", config)
         return source
     }
+
+
 
 }

@@ -93,6 +93,30 @@ FIELDS
 - Choose a GENERAL role category.
 - Examples:
   "데이터 분석가", "서비스 기획", "백엔드 엔지니어"
+  
+------------------------------
+
+[LOCATION]
+
+- Extract the MOST PRECISE residential address available.
+- Do NOT simplify or shorten unless necessary.
+- Preserve district / street / building numbers if present.
+
+Priority order:
+1. Full street address (도로명 or 지번)
+2. City + district
+3. City/province
+4. UNKNOWN
+
+Examples:
+- "서울특별시 강남구 테헤란로 123"
+- "경기도 성남시 분당구"
+- "부산 해운대구"
+- "서울"
+
+If multiple addresses appear, choose the most recent or most clearly labeled residence.
+Do NOT output email or phone numbers.
+
 
 ==============================
 OUTPUT FORMAT
@@ -104,7 +128,8 @@ Return ONLY valid JSON:
   "name": string,
   "major": string,
   "gpa": string,
-  "preferredRole": string
+  "preferredRole": string,
+  "location": string
 }
 
 """.trimIndent()
@@ -217,9 +242,16 @@ Rules:
 
         val fixedGpa = validateGpa(extracted.gpa, resumeText)
 
+        fun validateLocation(location: String): String {
+            if (location.length > 120) return "UNKNOWN"
+            if (location.contains("@")) return "UNKNOWN"
+            return location
+        }
+
         return extracted.copy(
             gpa = fixedGpa,
-            preferredRole = validateRole(extracted.preferredRole, resumeText)
+            preferredRole = validateRole(extracted.preferredRole, resumeText),
+            location = validateLocation(extracted.location)
         )
     }
     private fun validateRole(
@@ -371,12 +403,13 @@ object AiSchemas {
     val PROFILE_SCHEMA = mapOf(
         "type" to "object",
         "additionalProperties" to false,
-        "required" to listOf("name", "major", "gpa", "preferredRole"),
+        "required" to listOf("name", "major", "gpa", "preferredRole", "location"),
         "properties" to mapOf(
             "name" to mapOf("type" to "string"),
             "major" to mapOf("type" to "string"),
             "gpa" to mapOf("type" to "string"),
-            "preferredRole" to mapOf("type" to "string")
+            "preferredRole" to mapOf("type" to "string"),
+            "location" to mapOf("type" to "string")
         )
     )
 }

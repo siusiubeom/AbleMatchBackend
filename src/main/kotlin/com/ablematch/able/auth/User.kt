@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication
 
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -91,7 +92,14 @@ class UserProfile(
     var gpa: String,
 
     @Column(name = "preferred_role", nullable = false)
-    var preferredRole: String
+    var preferredRole: String,
+
+    @Column
+    var location: String? = null,
+
+    @Column
+    var profileImageUrl: String? = null
+
 )
 
 
@@ -107,7 +115,8 @@ data class ExtractedProfile(
     val name: String,
     val major: String,
     val gpa: String,
-    val preferredRole: String
+    val preferredRole: String,
+    val location: String
 )
 
 @RestController
@@ -134,6 +143,41 @@ class ProfileFromResumeController(
                 "Profile not created yet"
             )
     }
+
+    @PutMapping("/profile")
+    @Transactional
+    fun updateProfile(
+        authentication: Authentication,
+        @RequestBody req: ProfileUpdateRequest
+    ): UserProfile {
+
+        val user = userRepository.findByEmail(authentication.name)!!
+        val profile = profileRepository.findByUser(user)
+            ?: throw RuntimeException("Profile not found")
+
+        req.name?.let { profile.name = it }
+        req.preferredRole?.let { profile.preferredRole = it }
+        req.location?.let { profile.location = it }
+
+        return profileRepository.save(profile)
+    }
+
+    @PostMapping("/profile/image")
+    fun updateProfileImage(
+        authentication: Authentication,
+        @RequestBody body: Map<String, String>
+    ): UserProfile {
+
+        val user = userRepository.findByEmail(authentication.name)!!
+        val profile = profileRepository.findByUser(user)!!
+
+        profile.profileImageUrl = body["url"]
+            ?: throw RuntimeException("url missing")
+
+        return profileRepository.save(profile)
+    }
+
+
 
 
     @PostMapping("/profile/from-resume")
@@ -163,6 +207,11 @@ class ProfileFromResumeController(
             major = extracted.major
             gpa = extracted.gpa
             preferredRole = extracted.preferredRole
+            if (location.isNullOrBlank() || location == "UNKNOWN") {
+                if (extracted.location != "UNKNOWN") {
+                    location = extracted.location
+                }
+            }
         }
 
         user.profile = profile
@@ -173,10 +222,12 @@ class ProfileFromResumeController(
 
 
 
-
-
-
-
 }
 
+
+data class ProfileUpdateRequest(
+    val name: String?,
+    val preferredRole: String?,
+    val location: String?
+)
 

@@ -17,7 +17,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
 
 
@@ -45,3 +45,8 @@ logging:
     org.hibernate.type.descriptor.sql: OFF
     com.ablematch.able: OFF
 
+naver:
+  maps:
+    base-url: https://naveropenapi.apigw.ntruss.com
+    key-id: ${NAVER_MAPS_KEY_ID}
+    key: ${NAVER_MAPS_KEY}

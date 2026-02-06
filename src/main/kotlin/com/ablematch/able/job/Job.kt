@@ -39,6 +39,13 @@ open class Job protected constructor() {
     @Column(nullable = false)
     open lateinit var lastFetchedAt: Instant
 
+    @Column(nullable = false)
+    open var likeCount: Long = 0
+
+    @Column(nullable = false)
+    open var viewCount: Long = 0
+
+
     companion object {
         fun create(sourceHash: String, sourceUrl: String): Job =
             Job().apply {
