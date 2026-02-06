@@ -15,6 +15,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -86,7 +87,8 @@ data class FeedPostDto(
 @RequestMapping("/api/community")
 class CommunityController(
     private val postRepo: CommunityPostRepository,
-    private val userRepo: UserRepository
+    private val userRepo: UserRepository,
+    private val commentRepo: CommentRepository,
 ) {
 
     @PostMapping("/post")
@@ -102,6 +104,50 @@ class CommunityController(
             )
         )
     }
+
+    @PostMapping("/{postId}/comment")
+    fun createComment(
+        @PathVariable postId: UUID,
+        @AuthenticationPrincipal user: UserDetails,
+        @RequestBody body: Map<String, String>
+    ): Comment {
+        val dbUser = userRepo.findByEmail(user.username)!!
+        val post = postRepo.findById(postId).orElseThrow()
+
+        return commentRepo.save(
+            Comment(
+                post = post,
+                user = dbUser,
+                content = body["content"]!!
+            )
+        )
+    }
+    @GetMapping("/{postId}/comments")
+    @Transactional
+    fun comments(@PathVariable postId: UUID): List<CommentDto> {
+        val post = postRepo.findById(postId).orElseThrow()
+
+        val aliasMap = linkedMapOf<String, String>()
+        var counter = 1
+
+        return post.comments
+            .sortedBy { it.createdAt }
+            .map {
+                val email = it.user.email
+                val alias = aliasMap.getOrPut(email) {
+                    if (aliasMap.isEmpty()) "익명"
+                    else "익명 ${counter++}"
+                }
+
+            CommentDto(
+                id = it.id!!,
+                authorAlias = alias,
+                content = it.content,
+                createdAt = it.createdAt
+            )
+        }
+    }
+
 
     @GetMapping("/feed")
     @Transactional
@@ -119,3 +165,10 @@ class CommunityController(
                 )
             }
 }
+
+data class CommentDto(
+    val id: UUID,
+    val authorAlias: String,
+    val content: String,
+    val createdAt: Instant
+)
