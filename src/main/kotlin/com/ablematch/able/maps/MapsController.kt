@@ -13,7 +13,7 @@ class MapsController(
     @GetMapping("/geocode")
     fun geocode(
         @RequestParam query: String
-    ): LatLng {
+    ): LatLng? {
         return distanceService.geocodeToLatLng(query)
     }
 

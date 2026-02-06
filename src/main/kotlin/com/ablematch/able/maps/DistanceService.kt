@@ -6,8 +6,8 @@ import kotlin.math.roundToInt
 data class LatLng(val lat: Double, val lng: Double)
 
 data class DistanceEstimateResult(
-    val origin: LatLng,
-    val destination: LatLng,
+    val origin: LatLng?,
+    val destination: LatLng?,
     val distanceMeters: Int,
     val durationMs: Long,
     val durationMinutes: Int
@@ -17,17 +17,16 @@ data class DistanceEstimateResult(
 class DistanceService(
     private val naver: NaverMapsClient
 ) {
-    fun geocodeToLatLng(address: String): LatLng {
+    fun geocodeToLatLng(address: String): LatLng? {
         val res = naver.geocode(address)
-        val first = res.addresses.firstOrNull()
-            ?: throw IllegalArgumentException("No geocode result for: $address")
+        val first = res.addresses.firstOrNull() ?: return null
 
-        val lng = first.x?.toDoubleOrNull()
-            ?: throw IllegalArgumentException("Invalid geocode x for: $address")
-        val lat = first.y?.toDoubleOrNull()
-            ?: throw IllegalArgumentException("Invalid geocode y for: $address")
+        val lng = first.x?.toDoubleOrNull() ?: return null
+        val lat = first.y?.toDoubleOrNull() ?: return null
 
         return LatLng(lat = lat, lng = lng)
+
+
     }
 
     fun reverseToAddress(lat: Double, lng: Double): String {
@@ -57,8 +56,19 @@ class DistanceService(
         val origin = geocodeToLatLng(originAddress)
         val dest = geocodeToLatLng(destinationAddress)
 
+        if (origin == null || dest == null) {
+            return DistanceEstimateResult(
+                origin = origin,
+                destination = dest,
+                distanceMeters = 0,
+                durationMs = 0,
+                durationMinutes = 0
+            )
+        }
+
         val start = "${origin.lng},${origin.lat}"
         val goal = "${dest.lng},${dest.lat}"
+
 
         val driving = naver.driving(start = start, goal = goal, option = option)
         val routes = driving.route[option]
