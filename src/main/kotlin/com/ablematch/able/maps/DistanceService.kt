@@ -23,9 +23,8 @@ class DistanceService(
 
         fun cleanAddress(addr: String): String {
             return addr
-                .replace(Regex("\\(.*?\\)"), "")
-                .replace(Regex("\\d+층"), "")
-                .replace(Regex("빌라|센터|타워|아파트"), "")
+                .replace(Regex("\\(.*?\\)"), "")   // remove parentheses
+                .replace(Regex("\\d+층"), "")      // remove floor
                 .replace(Regex("\\s+"), " ")
                 .trim()
         }
