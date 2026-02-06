@@ -76,7 +76,7 @@ class SecurityConfig(
 class WebConfig : WebMvcConfigurer {
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
         registry.addResourceHandler("/uploads/**")
-            .addResourceLocations("file:uploads/")
+            .addResourceLocations("file:/tmp/uploads/")
     }
 }
 
