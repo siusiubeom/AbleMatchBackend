@@ -13,10 +13,12 @@ class NaverMapsClient(
     @Value("\${naver.maps.key-id}") private val keyId: String,
     @Value("\${naver.maps.key}") private val key: String,
 ) {
+
     private val client = RestClient.builder()
         .baseUrl(baseUrl)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .build()
+
 
     fun geocode(query: String, coordinate: String? = null): GeocodeResponse {
         val uri = UriComponentsBuilder
@@ -25,7 +27,8 @@ class NaverMapsClient(
             .apply { if (!coordinate.isNullOrBlank()) queryParam("coordinate", coordinate) }
             .build(true)
             .toUriString()
-
+        println("NAVER KEY ID = $keyId")
+        println("NAVER KEY = $key")
         return client.get()
             .uri(uri)
             .header("X-NCP-APIGW-API-KEY-ID", keyId)
@@ -43,7 +46,8 @@ class NaverMapsClient(
             .queryParam("output", "json")
             .build(true)
             .toUriString()
-
+        println("NAVER KEY ID = $keyId")
+        println("NAVER KEY = $key")
         return client.get()
             .uri(uri)
             .header("X-NCP-APIGW-API-KEY-ID", keyId)
@@ -62,6 +66,8 @@ class NaverMapsClient(
             .queryParam("option", option)
             .build(true)
             .toUriString()
+        println("NAVER KEY ID = $keyId")
+        println("NAVER KEY = $key")
 
         return client.get()
             .uri(uri)

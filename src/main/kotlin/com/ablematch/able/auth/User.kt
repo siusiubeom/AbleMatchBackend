@@ -159,6 +159,7 @@ class ProfileFromResumeController(
         req.name?.let { profile.name = it }
         req.preferredRole?.let { profile.preferredRole = it }
         req.location?.let { profile.location = it }
+        req.gpa?.let { profile.gpa = it }
 
         return profileRepository.save(profile)
     }
@@ -243,6 +244,7 @@ class ProfileFromResumeController(
 data class ProfileUpdateRequest(
     val name: String?,
     val preferredRole: String?,
-    val location: String?
+    val location: String?,
+    val gpa: String?
 )
 
