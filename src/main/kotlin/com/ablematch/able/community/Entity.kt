@@ -14,6 +14,7 @@ import jakarta.transaction.Transactional
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -55,7 +56,7 @@ class Comment(
     var user: User,
 
     var content: String,
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = Instant.now(),
 )
 
 @Entity
@@ -80,7 +81,8 @@ data class FeedPostDto(
     val content: String,
     val likeCount: Int,
     val commentCount: Int,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val isOwner: Boolean
 )
 
 @RestController
@@ -122,37 +124,80 @@ class CommunityController(
             )
         )
     }
+
     @GetMapping("/{postId}/comments")
     @Transactional
-    fun comments(@PathVariable postId: UUID): List<CommentDto> {
+    fun comments(
+        @PathVariable postId: UUID,
+        @AuthenticationPrincipal user: UserDetails?
+    ): List<CommentDto> {
+
+        val currentEmail = user?.username
         val post = postRepo.findById(postId).orElseThrow()
+        val postAuthorEmail = post.user.email
 
         val aliasMap = linkedMapOf<String, String>()
         var counter = 1
 
-        return post.comments
-            .sortedBy { it.createdAt }
-            .map {
-                val email = it.user.email
-                val alias = aliasMap.getOrPut(email) {
-                    if (aliasMap.isEmpty()) "익명"
-                    else "익명 ${counter++}"
-                }
+        return post.comments.sortedBy { it.createdAt }.map {
+            val email = it.user.email
+
+            val alias = if (email == postAuthorEmail) {
+                "익명"
+            } else {
+                aliasMap.getOrPut(email) { "익명 ${counter++}" }
+            }
 
             CommentDto(
                 id = it.id!!,
                 authorAlias = alias,
                 content = it.content,
-                createdAt = it.createdAt
+                createdAt = it.createdAt,
+                isPostAuthor = email == postAuthorEmail,
+                isOwner = email == currentEmail
             )
         }
     }
 
 
+    @DeleteMapping("/post/{postId}")
+    fun deletePost(
+        @PathVariable postId: UUID,
+        @AuthenticationPrincipal user: UserDetails
+    ) {
+        val dbUser = userRepo.findByEmail(user.username)!!
+        val post = postRepo.findById(postId).orElseThrow()
+
+        if (post.user.id != dbUser.id) {
+            throw RuntimeException("Not allowed")
+        }
+
+        postRepo.delete(post)
+    }
+
+    @DeleteMapping("/comment/{commentId}")
+    fun deleteComment(
+        @PathVariable commentId: UUID,
+        @AuthenticationPrincipal user: UserDetails
+    ) {
+        val dbUser = userRepo.findByEmail(user.username)!!
+        val comment = commentRepo.findById(commentId).orElseThrow()
+
+        if (comment.user.id != dbUser.id) {
+            throw RuntimeException("Not allowed")
+        }
+
+        commentRepo.delete(comment)
+    }
+
+
+
     @GetMapping("/feed")
     @Transactional
-    fun feed(): List<FeedPostDto> =
-        postRepo.findAll()
+    fun feed(@AuthenticationPrincipal user: UserDetails?): List<FeedPostDto> {
+        val email = user?.username
+
+        return postRepo.findAll()
             .sortedByDescending { it.createdAt }
             .map {
                 FeedPostDto(
@@ -161,14 +206,20 @@ class CommunityController(
                     content = it.content,
                     likeCount = it.likes.size,
                     commentCount = it.comments.size,
-                    createdAt = it.createdAt
+                    createdAt = it.createdAt,
+                    isOwner = email == it.user.email
                 )
             }
+    }
+
 }
 
 data class CommentDto(
     val id: UUID,
     val authorAlias: String,
     val content: String,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val isPostAuthor: Boolean,
+    val isOwner: Boolean
 )
+
