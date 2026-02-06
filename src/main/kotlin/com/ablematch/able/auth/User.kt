@@ -177,7 +177,8 @@ class ProfileFromResumeController(
             throw RuntimeException("file missing")
         }
 
-        val uploadsDir = File("uploads")
+        val uploadsDir = File("/tmp/uploads")
+
         if (!uploadsDir.exists()) uploadsDir.mkdirs()
 
         val filename = "${UUID.randomUUID()}_${file.originalFilename}"

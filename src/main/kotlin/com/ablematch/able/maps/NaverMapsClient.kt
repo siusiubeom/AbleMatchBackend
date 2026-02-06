@@ -35,6 +35,23 @@ class NaverMapsClient(
             ?: error("Geocode response null")
     }
 
+    fun reverseGeocode(lat: Double, lng: Double): GeocodeResponse {
+        val uri = UriComponentsBuilder
+            .fromPath("/map-reversegeocode/v2/gc")
+            .queryParam("coords", "$lng,$lat")
+            .queryParam("orders", "roadaddr")
+            .queryParam("output", "json")
+            .build(true)
+            .toUriString()
+
+        return client.get()
+            .uri(uri)
+            .retrieve()
+            .body(GeocodeResponse::class.java)
+            ?: error("Reverse geocode null")
+    }
+
+
     fun driving(start: String, goal: String, option: String = "trafast"): DrivingResponse {
         val uri = UriComponentsBuilder
             .fromPath("/map-direction/v1/driving")

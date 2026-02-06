@@ -17,6 +17,15 @@ class MapsController(
         return distanceService.geocodeToLatLng(query)
     }
 
+    @GetMapping("/reverse")
+    fun reverse(
+        @RequestParam lat: Double,
+        @RequestParam lng: Double
+    ): String {
+        return distanceService.reverseToAddress(lat, lng)
+    }
+
+
     @GetMapping("/estimate")
     fun estimate(
         @RequestParam originAddress: String,
