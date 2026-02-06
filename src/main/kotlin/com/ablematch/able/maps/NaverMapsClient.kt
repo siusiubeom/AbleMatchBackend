@@ -97,8 +97,6 @@ class NaverMapsClient(
             .queryParam("option", option)
             .build()
             .toUriString()
-        println("NAVER KEY ID = $keyId")
-        println("NAVER KEY = $key")
 
         return client.get()
             .uri(uri)
