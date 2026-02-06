@@ -16,8 +16,6 @@ class NaverMapsClient(
     private val client = RestClient.builder()
         .baseUrl(baseUrl)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .defaultHeader("X-NCP-APIGW-API-KEY-ID", keyId)
-        .defaultHeader("X-NCP-APIGW-API-KEY", key)
         .build()
 
     fun geocode(query: String, coordinate: String? = null): GeocodeResponse {
@@ -30,6 +28,8 @@ class NaverMapsClient(
 
         return client.get()
             .uri(uri)
+            .header("X-NCP-APIGW-API-KEY-ID", keyId)
+            .header("X-NCP-APIGW-API-KEY", key)
             .retrieve()
             .body(GeocodeResponse::class.java)
             ?: error("Geocode response null")
@@ -46,6 +46,8 @@ class NaverMapsClient(
 
         return client.get()
             .uri(uri)
+            .header("X-NCP-APIGW-API-KEY-ID", keyId)
+            .header("X-NCP-APIGW-API-KEY", key)
             .retrieve()
             .body(GeocodeResponse::class.java)
             ?: error("Reverse geocode null")
@@ -63,8 +65,11 @@ class NaverMapsClient(
 
         return client.get()
             .uri(uri)
+            .header("X-NCP-APIGW-API-KEY-ID", keyId)
+            .header("X-NCP-APIGW-API-KEY", key)
             .retrieve()
             .body(DrivingResponse::class.java)
             ?: error("Driving response null")
+
     }
 }
