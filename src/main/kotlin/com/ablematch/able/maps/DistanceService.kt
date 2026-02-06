@@ -1,5 +1,6 @@
 package com.ablematch.able.maps
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import kotlin.math.roundToInt
 
@@ -17,12 +18,13 @@ data class DistanceEstimateResult(
 class DistanceService(
     private val naver: NaverMapsClient
 ) {
+    private val log = LoggerFactory.getLogger(DistanceService::class.java)
     fun geocodeToLatLng(address: String): LatLng? {
 
         fun cleanAddress(addr: String): String {
             return addr
-                .replace(Regex("\\(.*?\\)"), "")   // remove parentheses
-                .replace(Regex("\\d+층"), "")      // remove floor
+                .replace(Regex("\\(.*?\\)"), "")
+                .replace(Regex("\\d+층"), "")
                 .replace(Regex("빌라|센터|타워|아파트"), "")
                 .replace(Regex("\\s+"), " ")
                 .trim()
@@ -35,33 +37,58 @@ class DistanceService(
         }
 
         val cleaned = cleanAddress(address)
-        println("GEOCODE CLEANED: $cleaned")
+        log.info("GEOCODE CLEANED: {}", cleaned)
 
         val cleanRes = naver.geocode(cleaned).addresses.firstOrNull()
-        toLatLng(cleanRes)?.let { return it }
+        val cleanLatLng = toLatLng(cleanRes)
+        if (cleanLatLng != null) {
+            log.info("GEOCODE SUCCESS CLEANED -> {}", cleanLatLng)
+            return cleanLatLng
+        }
 
-        println("GEOCODE RAW FALLBACK: $address")
+        log.warn("GEOCODE CLEAN FAILED, RAW FALLBACK: {}", address)
+
         val rawRes = naver.geocode(address).addresses.firstOrNull()
-        return toLatLng(rawRes)
+        val rawLatLng = toLatLng(rawRes)
+
+        if (rawLatLng != null) {
+            log.info("GEOCODE SUCCESS RAW -> {}", rawLatLng)
+        } else {
+            log.error("GEOCODE FAILED COMPLETELY: {}", address)
+        }
+
+        return rawLatLng
     }
+
 
 
 
     fun reverseToAddress(lat: Double, lng: Double): String {
         val res = naver.reverseGeocode(lat, lng)
-
-        val first = res.results.firstOrNull()
-            ?: return "UNKNOWN"
+        val first = res.results.firstOrNull() ?: return "UNKNOWN"
 
         val region = first.region
         val land = first.land
 
-        val addr1 = region?.area1?.name ?: ""
-        val addr2 = region?.area2?.name ?: ""
-        val road = land?.roadName ?: ""
-        val num = land?.number1 ?: ""
+        val area1 = region?.area1?.name ?: ""
+        val area2 = region?.area2?.name ?: ""
 
-        return "$addr1 $addr2 $road $num".trim()
+        val road = land?.roadName
+        val num = land?.number1
+
+        if (!road.isNullOrBlank() && !num.isNullOrBlank()) {
+            return "$area1 $area2 $road $num".trim()
+        }
+
+        if (!road.isNullOrBlank()) {
+            return "$area1 $area2 $road".trim()
+        }
+
+        if (area1.isNotBlank() || area2.isNotBlank()) {
+            return "$area1 $area2".trim()
+        }
+
+        return "UNKNOWN"
     }
 
 
@@ -71,10 +98,16 @@ class DistanceService(
         destinationAddress: String,
         option: String = "trafast"
     ): DistanceEstimateResult {
+
+        log.info("DISTANCE REQUEST origin='{}' dest='{}'", originAddress, destinationAddress)
+
         val origin = geocodeToLatLng(originAddress)
         val dest = geocodeToLatLng(destinationAddress)
 
+        log.info("GEOCODE RESULT origin={} dest={}", origin, dest)
+
         if (origin == null || dest == null) {
+            log.warn("DISTANCE SKIPPED: origin or destination null")
             return DistanceEstimateResult(
                 origin = origin,
                 destination = dest,
@@ -87,17 +120,27 @@ class DistanceService(
         val start = "${origin.lng},${origin.lat}"
         val goal = "${dest.lng},${dest.lat}"
 
+        log.info("NAVER DRIVING start={} goal={}", start, goal)
 
         val driving = naver.driving(start = start, goal = goal, option = option)
+
         val routes = driving.route[option]
             ?: driving.route.values.firstOrNull()
-            ?: throw IllegalStateException("No route returned")
+            ?: run {
+                log.error("NO ROUTES RETURNED FROM NAVER")
+                throw IllegalStateException("No route returned")
+            }
 
         val summary = routes.firstOrNull()?.summary
-            ?: throw IllegalStateException("No summary returned")
+            ?: run {
+                log.error("NO SUMMARY RETURNED FROM NAVER")
+                throw IllegalStateException("No summary returned")
+            }
 
         val distance = summary.distance ?: 0
         val duration = summary.duration ?: 0L
+
+        log.info("DISTANCE SUCCESS distance={}m duration={}ms", distance, duration)
 
         return DistanceEstimateResult(
             origin = origin,
@@ -107,4 +150,5 @@ class DistanceService(
             durationMinutes = (duration / 60_000.0).roundToInt()
         )
     }
+
 }

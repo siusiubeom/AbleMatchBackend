@@ -43,7 +43,9 @@ logging:
   level:
     org.hibernate.SQL: OFF
     org.hibernate.type.descriptor.sql: OFF
-    com.ablematch.able: OFF
+    #com.ablematch.able: OFF
+    com.ablematch.able: INFO
+
 
 naver:
   maps:
