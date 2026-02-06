@@ -57,6 +57,7 @@ data class MatchingCardDto(
     val highlights: List<String>,
     val workType: String,
     val sourceUrl: String,
+    val dueDateText: String?
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -81,7 +82,9 @@ data class MatchingExplainDto(
     val score: Int,
     val breakdown: Map<String, Int>,
     val missingSkills: List<String>,
-    val impossibleReason: String?
+    val impossibleReason: String?,
+    val company: String?,
+    val companyAddress: String?
 )
 
 @Entity

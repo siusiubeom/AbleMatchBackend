@@ -66,7 +66,8 @@ class MatchingService(
                         job.workType
                     ),
                     workType = job.workType,
-                    sourceUrl = job.sourceUrl
+                    sourceUrl = job.sourceUrl,
+                    dueDateText = job.dueDateText
                 )
             }
             .sortedByDescending { it.score }
@@ -151,7 +152,9 @@ class MatchingService(
                 "workType" to workScore
             ),
             missingSkills = job.requiredSkills.filterNot { resume.skills.contains(it) },
-            impossibleReason = if (impossible) "엘리베이터 미비" else null
+            impossibleReason = if (impossible) "엘리베이터 미비" else null,
+            company = job.company,
+            companyAddress = job.workLocation
         )
     }
 
