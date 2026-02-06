@@ -21,32 +21,30 @@ class DistanceService(
 
         fun cleanAddress(addr: String): String {
             return addr
-                .replace(Regex("\\(.*?\\)"), "")
-                .replace(Regex("\\d+층"), "")
+                .replace(Regex("\\(.*?\\)"), "")   // remove parentheses
+                .replace(Regex("\\d+층"), "")      // remove floor
                 .replace(Regex("빌라|센터|타워|아파트"), "")
+                .replace(Regex("\\s+"), " ")
                 .trim()
         }
 
-        val res = naver.geocode(address)
-        val firstRaw = res.addresses.firstOrNull()
-
-        if (firstRaw != null) {
-            val lng = firstRaw.x?.toDoubleOrNull()
-            val lat = firstRaw.y?.toDoubleOrNull()
-            if (lng != null && lat != null) {
-                return LatLng(lat, lng)
-            }
+        fun toLatLng(a: GeocodeAddress?): LatLng? {
+            val lng = a?.x?.toDoubleOrNull()
+            val lat = a?.y?.toDoubleOrNull()
+            return if (lng != null && lat != null) LatLng(lat, lng) else null
         }
 
         val cleaned = cleanAddress(address)
-        val retry = naver.geocode(cleaned)
-        val firstClean = retry.addresses.firstOrNull() ?: return null
+        println("GEOCODE CLEANED: $cleaned")
 
-        val lng = firstClean.x?.toDoubleOrNull() ?: return null
-        val lat = firstClean.y?.toDoubleOrNull() ?: return null
+        val cleanRes = naver.geocode(cleaned).addresses.firstOrNull()
+        toLatLng(cleanRes)?.let { return it }
 
-        return LatLng(lat, lng)
+        println("GEOCODE RAW FALLBACK: $address")
+        val rawRes = naver.geocode(address).addresses.firstOrNull()
+        return toLatLng(rawRes)
     }
+
 
 
     fun reverseToAddress(lat: Double, lng: Double): String {
