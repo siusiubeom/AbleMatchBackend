@@ -38,7 +38,7 @@ class NaverMapsClient(
             ?: error("Geocode response null")
     }
 
-    fun reverseGeocode(lat: Double, lng: Double): GeocodeResponse {
+    fun reverseGeocode(lat: Double, lng: Double): ReverseGeocodeResponse {
         val uri = UriComponentsBuilder
             .fromPath("/map-reversegeocode/v2/gc")
             .queryParam("coords", "$lng,$lat")
@@ -46,14 +46,13 @@ class NaverMapsClient(
             .queryParam("output", "json")
             .build(true)
             .toUriString()
-        println("NAVER KEY ID = $keyId")
-        println("NAVER KEY = $key")
+
         return client.get()
             .uri(uri)
             .header("X-NCP-APIGW-API-KEY-ID", keyId)
             .header("X-NCP-APIGW-API-KEY", key)
             .retrieve()
-            .body(GeocodeResponse::class.java)
+            .body(ReverseGeocodeResponse::class.java)
             ?: error("Reverse geocode null")
     }
 
@@ -79,3 +78,26 @@ class NaverMapsClient(
 
     }
 }
+
+data class ReverseGeocodeResponse(
+    val results: List<ReverseResult>
+)
+
+data class ReverseResult(
+    val region: Region?,
+    val land: Land?
+)
+
+data class Region(
+    val area1: Area?,
+    val area2: Area?
+)
+
+data class Area(
+    val name: String?
+)
+
+data class Land(
+    val roadName: String?,
+    val number1: String?
+)

@@ -32,9 +32,21 @@ class DistanceService(
 
     fun reverseToAddress(lat: Double, lng: Double): String {
         val res = naver.reverseGeocode(lat, lng)
-        return res.addresses.firstOrNull()?.roadAddress
-            ?: "UNKNOWN"
+
+        val first = res.results.firstOrNull()
+            ?: return "UNKNOWN"
+
+        val region = first.region
+        val land = first.land
+
+        val addr1 = region?.area1?.name ?: ""
+        val addr2 = region?.area2?.name ?: ""
+        val road = land?.roadName ?: ""
+        val num = land?.number1 ?: ""
+
+        return "$addr1 $addr2 $road $num".trim()
     }
+
 
 
     fun estimateByAddresses(
