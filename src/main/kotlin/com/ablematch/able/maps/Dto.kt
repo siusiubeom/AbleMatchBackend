@@ -45,8 +45,10 @@ data class JobBoardDto(
     val title: String,
     val company: String,
     val workType: String,
+    val workLocation: String,
     val sourceUrl: String,
     val viewCount: Long,
-    val likeCount: Long
+    val likeCount: Long,
+    val dueDateText: String?
 )
 

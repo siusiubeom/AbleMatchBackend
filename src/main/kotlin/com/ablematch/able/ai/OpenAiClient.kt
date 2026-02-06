@@ -164,24 +164,77 @@ Return ONLY valid JSON:
     fun extractJobStructured(text: String): JobAIResult {
         val inputText = prepareInput(text)
 
+
         val request = mapOf(
             "model" to model,
             "input" to listOf(
                 systemMsg(
-                    """
-You are extracting structured job data.
+                        """
+You are extracting structured job data from a JOB DESCRIPTION.
 
-Rules:
-- Jobs may be NON-SOFTWARE (cosmetics, sales, HR, marketing, design, manufacturing).
+The input usually contains:
+- TITLE
+- DESCRIPTION (main text)
+
+The description may be messy, incomplete, or mixed with benefits,
+requirements, and responsibilities.
+
+==============================
+GOAL
+==============================
+
+Your goal is to infer structured hiring signals
+that help job matching systems.
+
+Focus on:
+- requiredSkills
+- accessibilityOptions
+- workType
+
+Title and company may already be known externally,
+so prioritize skill and work environment understanding.
+
+==============================
+RULES
+==============================
+
+GENERAL
+- Jobs may be NON-SOFTWARE (sales, HR, marketing, design, manufacturing, etc.)
 - NEVER default to software roles.
-- NEVER return empty arrays for requiredSkills or accessibilityOptions.
-- If skills are not listed, INFER them from responsibilities.
-- If accessibility is not listed, INFER reasonable accommodations from work type.
 - Prefer inference over UNKNOWN.
-- If TITLE or COMPANY is explicitly provided above, USE IT EXACTLY.
-- Only infer when missing.
-- Do not return UNKNOWN if a reasonable value exists.
-""".trimIndent()
+- Do not return empty arrays.
+
+REQUIRED SKILLS
+- Extract explicit skills if listed.
+- If not listed, INFER from responsibilities or tools.
+- Include both technical and soft skills.
+- Minimum 3 items.
+
+ACCESSIBILITY OPTIONS
+- Infer from work environment if not listed.
+- Examples: "재택근무 가능", "유연근무", "휠체어 접근 가능".
+- If nothing is implied, return reasonable general options
+  such as flexible hours or hybrid work.
+
+WORK TYPE
+- Detect from benefits or schedule.
+- "재택", "원격" → REMOTE
+- "격주 재택", "하이브리드" → HYBRID
+- Otherwise → ONSITE
+- If impossible to infer → UNKNOWN
+
+LOCATION
+- Only extract if clearly stated in the text.
+- Otherwise return "UNKNOWN".
+- Do not guess.
+
+TITLE / COMPANY
+- Use provided TITLE if present.
+- If missing, infer a concise role name.
+
+Return ONLY valid JSON matching the schema.
+"""
+                        .trimIndent()
                 ),
                 userMsg(inputText)
             ),
@@ -380,7 +433,14 @@ object AiSchemas {
     val JOB_SCHEMA = mapOf(
         "type" to "object",
         "additionalProperties" to false,
-        "required" to listOf("title", "company", "requiredSkills", "accessibilityOptions", "workType"),
+        "required" to listOf(
+            "title",
+            "company",
+            "requiredSkills",
+            "accessibilityOptions",
+            "workType",
+            "workLocation"
+        ),
         "properties" to mapOf(
             "title" to mapOf("type" to "string"),
             "company" to mapOf("type" to "string"),
@@ -396,7 +456,8 @@ object AiSchemas {
             "workType" to mapOf(
                 "type" to "string",
                 "enum" to listOf("ONSITE", "REMOTE", "HYBRID", "UNKNOWN")
-            )
+            ),
+            "workLocation" to mapOf("type" to "string")
         )
     )
 

@@ -50,11 +50,12 @@ class JobController(
         val ai = openAiClient.extractJobStructured(
             """
 TITLE: ${meta.title ?: ""}
-COMPANY: ${meta.company ?: ""}
+
 DESCRIPTION:
 ${meta.bodyText}
 """.trimIndent()
         )
+
 
         job.title =
             meta.title?.takeIf { it.isNotBlank() }
@@ -67,7 +68,11 @@ ${meta.bodyText}
         job.requiredSkills = ai.requiredSkills.toSet()
         job.accessibilityOptions = ai.accessibilityOptions
         job.workType = ai.workType
+        job.workLocation =
+            meta.locationText?.takeIf { it.isNotBlank() }
+                ?: ai.workLocation
         job.lastFetchedAt = Instant.now()
+        job.dueDateText = meta.dueDateText
 
         jobRepository.save(job)
     }
@@ -112,6 +117,7 @@ ${meta.bodyText}
         job.accessibilityOptions = ai.accessibilityOptions
         job.workType = ai.workType
         job.lastFetchedAt = Instant.now()
+        job.dueDateText = meta.dueDateText
 
 
         return jobRepository.save(job)
@@ -167,7 +173,9 @@ class WebScrapingClient {
     data class WantedJobMeta(
         val title: String?,
         val company: String?,
-        val bodyText: String
+        val bodyText: String,
+        val locationText: String?,
+        val dueDateText: String?
     )
 
     fun scrapeWanted(url: String): WantedJobMeta {
@@ -176,15 +184,35 @@ class WebScrapingClient {
             .timeout(10_000)
             .get()
 
-
         val title = doc.selectFirst("header h1")?.text()
         val company = doc.selectFirst("header a[href*=\"company\"]")?.text()
             ?: doc.selectFirst("header span")?.text()
 
-        val body = doc.select("div.JobDescription").text()
+        val body =
+            doc.select("article[class^=JobDescription_JobDescription]")
+                .text()
 
-        return WantedJobMeta(title, company, body)
+        val location =
+            doc.select("article[class^=JobWorkPlace_] div[class*=location] span")
+                .firstOrNull()
+                ?.text()
+
+        val deadline =
+            doc.select("article[class^=JobDueTime_] span")
+                .firstOrNull()
+                ?.text()
+
+        println("=== SCRAPE DEBUG ===")
+        println("URL: $url")
+        println("TITLE: $title")
+        println("COMPANY: $company")
+        println("LOCATION: $location")
+        println("DEADLINE: $deadline")
+        println("====================")
+
+        return WantedJobMeta(title, company, body, location, deadline)
     }
+
 
 }
 @Component
@@ -397,9 +425,11 @@ class JobBoardController(
                 title = it.title,
                 company = it.company,
                 workType = it.workType,
+                workLocation = it.workLocation,
                 sourceUrl = it.sourceUrl,
                 viewCount = it.viewCount,
-                likeCount = it.likeCount
+                likeCount = it.likeCount,
+                dueDateText = it.dueDateText
             )
         }
     }

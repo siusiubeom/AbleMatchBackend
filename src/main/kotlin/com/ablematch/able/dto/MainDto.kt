@@ -65,7 +65,8 @@ data class JobAIResult(
     val requiredSkills: List<String> = emptyList(),
     val accessibilityOptions: List<String> = emptyList(),
     val workType: String = "UNKNOWN",
-    val company: String = ""
+    val company: String = "",
+    val workLocation: String = "UNKNOWN"
 )
 
 

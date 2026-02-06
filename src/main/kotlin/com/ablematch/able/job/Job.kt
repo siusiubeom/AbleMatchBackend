@@ -37,10 +37,16 @@ open class Job protected constructor() {
     open lateinit var workType: String
 
     @Column(nullable = false)
+    open lateinit var workLocation: String
+
+    @Column(nullable = false)
     open lateinit var lastFetchedAt: Instant
 
     @Column(nullable = false)
     open var likeCount: Long = 0
+
+    @Column
+    open var dueDateText: String? = null
 
     @Column(nullable = false)
     open var viewCount: Long = 0
@@ -52,6 +58,7 @@ open class Job protected constructor() {
                 this.sourceHash = sourceHash
                 this.sourceUrl = sourceUrl
                 this.lastFetchedAt = Instant.EPOCH
+                this.workLocation = "UNKNOWN"
             }
     }
 }
