@@ -18,16 +18,36 @@ class DistanceService(
     private val naver: NaverMapsClient
 ) {
     fun geocodeToLatLng(address: String): LatLng? {
+
+        fun cleanAddress(addr: String): String {
+            return addr
+                .replace(Regex("\\(.*?\\)"), "")
+                .replace(Regex("\\d+층"), "")
+                .replace(Regex("빌라|센터|타워|아파트"), "")
+                .trim()
+        }
+
         val res = naver.geocode(address)
-        val first = res.addresses.firstOrNull() ?: return null
+        val firstRaw = res.addresses.firstOrNull()
 
-        val lng = first.x?.toDoubleOrNull() ?: return null
-        val lat = first.y?.toDoubleOrNull() ?: return null
+        if (firstRaw != null) {
+            val lng = firstRaw.x?.toDoubleOrNull()
+            val lat = firstRaw.y?.toDoubleOrNull()
+            if (lng != null && lat != null) {
+                return LatLng(lat, lng)
+            }
+        }
 
-        return LatLng(lat = lat, lng = lng)
+        val cleaned = cleanAddress(address)
+        val retry = naver.geocode(cleaned)
+        val firstClean = retry.addresses.firstOrNull() ?: return null
 
+        val lng = firstClean.x?.toDoubleOrNull() ?: return null
+        val lat = firstClean.y?.toDoubleOrNull() ?: return null
 
+        return LatLng(lat, lng)
     }
+
 
     fun reverseToAddress(lat: Double, lng: Double): String {
         val res = naver.reverseGeocode(lat, lng)
