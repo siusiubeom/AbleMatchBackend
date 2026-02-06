@@ -164,6 +164,7 @@ class ProfileFromResumeController(
     }
 
     @PostMapping("/profile/image")
+    @Transactional
     fun updateProfileImage(
         authentication: Authentication,
         @RequestParam("file") file: MultipartFile

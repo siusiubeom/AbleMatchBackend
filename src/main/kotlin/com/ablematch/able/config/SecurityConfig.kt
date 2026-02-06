@@ -47,6 +47,7 @@ class SecurityConfig(
                 it.requestMatchers("/api/**").authenticated()
                 it.requestMatchers("/api/community/feed").permitAll()
                 it.requestMatchers("/api/jobs/board/**").permitAll()
+                it.requestMatchers("/uploads/**").permitAll()
             }
 
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
