@@ -107,23 +107,36 @@ class CommunityController(
         )
     }
 
+    data class CreateCommentResponse(
+        val id: UUID,
+        val content: String,
+        val createdAt: Instant
+    )
+
     @PostMapping("/{postId}/comment")
     fun createComment(
         @PathVariable postId: UUID,
         @AuthenticationPrincipal user: UserDetails,
         @RequestBody body: Map<String, String>
-    ): Comment {
+    ): CreateCommentResponse {
         val dbUser = userRepo.findByEmail(user.username)!!
         val post = postRepo.findById(postId).orElseThrow()
 
-        return commentRepo.save(
+        val saved = commentRepo.save(
             Comment(
                 post = post,
                 user = dbUser,
                 content = body["content"]!!
             )
         )
+
+        return CreateCommentResponse(
+            id = saved.id!!,
+            content = saved.content,
+            createdAt = saved.createdAt
+        )
     }
+
 
     @GetMapping("/{postId}/comments")
     @Transactional
