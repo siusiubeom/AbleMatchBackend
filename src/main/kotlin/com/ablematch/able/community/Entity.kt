@@ -4,6 +4,7 @@ import com.ablematch.able.auth.User
 import com.ablematch.able.auth.UserRepository
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
+import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
@@ -20,7 +21,10 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
+import java.io.File
 import java.time.Instant
 import java.util.UUID
 
@@ -37,12 +41,16 @@ class CommunityPost(
 
     var createdAt: Instant = Instant.now(),
 
-    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL])
+    @ElementCollection
+    var imageUrls: MutableList<String> = mutableListOf(),
+
+    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
     var comments: MutableList<Comment> = mutableListOf(),
 
-    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL])
+    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
     var likes: MutableList<PostLike> = mutableListOf()
 )
+
 
 @Entity
 class Comment(
@@ -73,17 +81,12 @@ class PostLike(
 
 interface CommunityPostRepository : JpaRepository<CommunityPost, UUID>
 interface CommentRepository : JpaRepository<Comment, UUID>
-interface PostLikeRepository : JpaRepository<PostLike, UUID>
+interface PostLikeRepository : JpaRepository<PostLike, UUID> {
+    fun existsByPostIdAndUserId(postId: UUID, userId: UUID): Boolean
+    fun findByPostIdAndUserId(postId: UUID, userId: UUID): PostLike?
+}
 
-data class FeedPostDto(
-    val id: UUID,
-    val author: String,
-    val content: String,
-    val likeCount: Int,
-    val commentCount: Int,
-    val createdAt: Instant,
-    val isOwner: Boolean
-)
+
 
 @RestController
 @RequestMapping("/api/community")
@@ -91,21 +94,26 @@ class CommunityController(
     private val postRepo: CommunityPostRepository,
     private val userRepo: UserRepository,
     private val commentRepo: CommentRepository,
+    private val likeRepo: PostLikeRepository,
 ) {
 
     @PostMapping("/post")
     fun createPost(
         @AuthenticationPrincipal user: UserDetails,
-        @RequestBody body: Map<String, String>
+        @RequestBody body: CreatePostRequest
     ): CommunityPost {
+
         val dbUser = userRepo.findByEmail(user.username)!!
+
         return postRepo.save(
             CommunityPost(
                 user = dbUser,
-                content = body["content"]!!
+                content = body.content,
+                imageUrls = body.imageUrls.toMutableList()
             )
         )
     }
+
 
     data class CreateCommentResponse(
         val id: UUID,
@@ -208,22 +216,68 @@ class CommunityController(
     @GetMapping("/feed")
     @Transactional
     fun feed(@AuthenticationPrincipal user: UserDetails?): List<FeedPostDto> {
-        val email = user?.username
+
+        val currentUser = user?.let { userRepo.findByEmail(it.username) }
 
         return postRepo.findAll()
             .sortedByDescending { it.createdAt }
-            .map {
+            .map { post ->
+
+                val liked = currentUser?.let {
+                    likeRepo.existsByPostIdAndUserId(post.id!!, it.id!!)
+                } ?: false
+
                 FeedPostDto(
-                    id = it.id!!,
-                    author = it.user.email,
-                    content = it.content,
-                    likeCount = it.likes.size,
-                    commentCount = it.comments.size,
-                    createdAt = it.createdAt,
-                    isOwner = email == it.user.email
+                    id = post.id!!,
+                    authorName = post.user.profile?.name ?: post.user.email,
+                    authorEmail = post.user.email,
+                    authorProfileImage = post.user.profile?.profileImageUrl,
+                    content = post.content,
+                    imageUrls = post.imageUrls,
+                    likeCount = post.likes.size,
+                    commentCount = post.comments.size,
+                    createdAt = post.createdAt,
+                    isOwner = currentUser?.email == post.user.email,
+                    isLikedByMe = liked
                 )
             }
     }
+
+    @PostMapping("/{postId}/like")
+    fun toggleLike(
+        @PathVariable postId: UUID,
+        @AuthenticationPrincipal user: UserDetails
+    ) {
+        val dbUser = userRepo.findByEmail(user.username)!!
+        val post = postRepo.findById(postId).orElseThrow()
+
+        val existing = likeRepo.findByPostIdAndUserId(postId, dbUser.id!!)
+
+        if (existing != null) {
+            likeRepo.delete(existing)
+        } else {
+            likeRepo.save(PostLike(post = post, user = dbUser))
+        }
+    }
+
+    @PostMapping("/upload")
+    fun uploadImage(
+        @RequestParam("file") file: MultipartFile
+    ): String {
+
+        val uploadsDir = File("/tmp/uploads")
+        if (!uploadsDir.exists()) uploadsDir.mkdirs()
+
+        val filename = "${UUID.randomUUID()}_${file.originalFilename}"
+        val dest = File(uploadsDir, filename)
+
+        file.transferTo(dest)
+
+        return "/uploads/$filename"
+    }
+
+
+
 
 }
 
@@ -236,3 +290,21 @@ data class CommentDto(
     val isOwner: Boolean
 )
 
+data class FeedPostDto(
+    val id: UUID,
+    val authorName: String,
+    val authorEmail: String,
+    val authorProfileImage: String?,
+    val content: String,
+    val imageUrls: List<String>,
+    val likeCount: Int,
+    val commentCount: Int,
+    val createdAt: Instant,
+    val isOwner: Boolean,
+    val isLikedByMe: Boolean
+)
+
+data class CreatePostRequest(
+    val content: String,
+    val imageUrls: List<String> = emptyList()
+)
