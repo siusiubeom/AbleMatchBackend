@@ -42,7 +42,7 @@ class CommunityPost(
 
     var createdAt: Instant = Instant.now(),
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     var imageUrls: MutableList<String> = mutableListOf(),
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
@@ -97,7 +97,8 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, UUID> {
         "user",
         "user.profile",
         "likes",
-        "comments"
+        "comments",
+        "imageUrls"
     ])
     fun findAllByOrderByCreatedAtDesc(): List<CommunityPost>
     @EntityGraph(attributePaths = [
