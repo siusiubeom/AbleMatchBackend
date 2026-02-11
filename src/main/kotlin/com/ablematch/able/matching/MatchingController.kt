@@ -48,5 +48,17 @@ class MatchingController(
         return matchingService.explain(resume, job)
     }
 
+    @GetMapping("/{jobId}/recommendation")
+    fun recommendation(
+        @AuthenticationPrincipal user: UserDetails,
+        @PathVariable jobId: UUID
+    ): RecommendationDto {
+        val u = userRepository.findByEmail(user.username)!!
+        val resume = resumeRepository.findByUserId(u.id!!)!!
+        val job = jobRepository.findByIdWithDetails(jobId)!!
+        return matchingService.recommendAi(resume, job)
+    }
+
+
 }
 

@@ -1,5 +1,6 @@
 package com.ablematch.able.matching
 
+import com.ablematch.able.ai.OpenAiClient
 import com.ablematch.able.dto.MatchingCardDto
 import com.ablematch.able.dto.MatchingExplainDto
 import com.ablematch.able.dto.MatchingWeight
@@ -18,8 +19,35 @@ import java.util.UUID
 class MatchingService(
     private val resumeRepo: ResumeRepository,
     private val jobRepo: JobRepository,
-    private val weightService: MatchingWeightService
+    private val weightService: MatchingWeightService,
+    private val openAiClient: OpenAiClient
 ) {
+
+    fun recommendAi(resume: Resume, job: Job): RecommendationDto {
+        val missingSkills = job.requiredSkills.filterNot {
+            resume.skills.contains(it)
+        }
+
+        val input = """
+USER SKILLS: ${resume.skills}
+JOB SKILLS: ${job.requiredSkills}
+MISSING: $missingSkills
+WORK TYPE USER: ${resume.workType}
+WORK TYPE JOB: ${job.workType}
+ACCESS USER: ${resume.accessibilityNeeds}
+ACCESS JOB: ${job.accessibilityOptions}
+
+Write a short 1–2 sentence Korean recommendation
+to increase hiring probability.
+Be encouraging and practical.
+No emojis. No bullet points.
+""".trimIndent()
+
+        val msg = openAiClient.generateShortRecommendation(input)
+
+        return RecommendationDto(msg)
+    }
+
     @Transactional()
     fun match(userId: UUID): MatchingResponse {
         val resume = resumeRepo.findByUserId(userId)
@@ -236,3 +264,7 @@ private fun calculateFast(
     return ((raw * 1.3) + 45).coerceIn(55.0, 88.0).toInt()
 }
 
+
+data class RecommendationDto(
+    val message: String
+)

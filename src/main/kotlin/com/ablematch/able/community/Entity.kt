@@ -12,6 +12,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.transaction.Transactional
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -79,11 +80,29 @@ class PostLike(
     var user: User
 )
 
-interface CommunityPostRepository : JpaRepository<CommunityPost, UUID>
+interface CommunityPostRepository : JpaRepository<CommunityPost, UUID> {
+
+    @EntityGraph(attributePaths = [
+        "user",
+        "user.profile",
+        "likes",
+        "comments"
+    ])
+    fun findAllByOrderByCreatedAtDesc(): List<CommunityPost>
+    @EntityGraph(attributePaths = [
+        "user",
+        "user.profile",
+        "comments",
+        "comments.user",
+        "comments.user.profile"
+    ])
+    fun findEntityGraphById(id: UUID): CommunityPost?
+}
 interface CommentRepository : JpaRepository<Comment, UUID>
 interface PostLikeRepository : JpaRepository<PostLike, UUID> {
     fun existsByPostIdAndUserId(postId: UUID, userId: UUID): Boolean
     fun findByPostIdAndUserId(postId: UUID, userId: UUID): PostLike?
+    fun findByUserId(userId: UUID): List<PostLike>
 }
 
 
@@ -128,7 +147,8 @@ class CommunityController(
         @RequestBody body: Map<String, String>
     ): CreateCommentResponse {
         val dbUser = userRepo.findByEmail(user.username)!!
-        val post = postRepo.findById(postId).orElseThrow()
+        val post = postRepo.findEntityGraphById(postId)
+            ?: throw NoSuchElementException("post not found")
 
         val saved = commentRepo.save(
             Comment(
@@ -154,7 +174,8 @@ class CommunityController(
     ): List<CommentDto> {
 
         val currentEmail = user?.username
-        val post = postRepo.findById(postId).orElseThrow()
+        val post = postRepo.findEntityGraphById(postId)
+            ?: throw NoSuchElementException("post not found")
         val postAuthorEmail = post.user.email
 
         val aliasMap = linkedMapOf<String, String>()
@@ -219,29 +240,34 @@ class CommunityController(
 
         val currentUser = user?.let { userRepo.findByEmail(it.username) }
 
-        return postRepo.findAll()
-            .sortedByDescending { it.createdAt }
+        val likedPostIds: Set<UUID> =
+            currentUser?.id?.let { uid ->
+                likeRepo.findByUserId(uid)
+                    .mapNotNull { it.post.id }
+                    .toSet()
+            } ?: emptySet()
+
+        return postRepo.findAllByOrderByCreatedAtDesc()
             .map { post ->
 
-                val liked = currentUser?.let {
-                    likeRepo.existsByPostIdAndUserId(post.id!!, it.id!!)
-                } ?: false
+                val profile = post.user.profile
 
                 FeedPostDto(
                     id = post.id!!,
-                    authorName = post.user.profile?.name ?: post.user.email,
+                    authorName = profile?.name ?: post.user.email,
                     authorEmail = post.user.email,
-                    authorProfileImage = post.user.profile?.profileImageUrl,
+                    authorProfileImage = profile?.profileImageUrl,
                     content = post.content,
                     imageUrls = post.imageUrls,
                     likeCount = post.likes.size,
                     commentCount = post.comments.size,
                     createdAt = post.createdAt,
                     isOwner = currentUser?.email == post.user.email,
-                    isLikedByMe = liked
+                    isLikedByMe = post.id in likedPostIds
                 )
             }
     }
+
 
     @PostMapping("/{postId}/like")
     fun toggleLike(

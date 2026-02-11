@@ -22,6 +22,28 @@ class OpenAiClient(
     @Value("\${openai.api-key}") private val apiKey: String,
     @Value("\${openai.model}") private val model: String,
 ) {
+    fun generateShortRecommendation(input: String): String {
+
+        val request = mapOf(
+            "model" to model,
+            "input" to listOf(
+                systemMsg(
+                    "You are a concise career coach. Respond in Korean with 1–2 short sentences."
+                ),
+                userMsg(input)
+            )
+        )
+
+        val response = post(request)
+
+        val output = response["output"] as List<*>
+        val msg = output.first() as Map<*, *>
+        val content = msg["content"] as List<*>
+        val text = (content.first() as Map<*, *>)["text"] as String
+
+        return text.trim()
+    }
+
 
     private companion object {
         const val MAX_INPUT_CHARS = 200_000
@@ -473,6 +495,8 @@ object AiSchemas {
             "location" to mapOf("type" to "string")
         )
     )
+
+
 }
 
 
