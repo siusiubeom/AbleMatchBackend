@@ -46,10 +46,10 @@ class CommunityPost(
     var imageUrls: MutableList<String> = mutableListOf(),
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var comments: MutableList<Comment> = mutableListOf(),
+    var comments: MutableSet<Comment> = mutableSetOf(),
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var likes: MutableList<PostLike> = mutableListOf()
+    var likes: MutableSet<PostLike> = mutableSetOf()
 )
 
 
@@ -78,7 +78,18 @@ class PostLike(
 
     @ManyToOne(fetch = FetchType.LAZY)
     var user: User
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PostLike) return false
+        return post.id == other.post.id && user.id == other.user.id
+    }
+
+    override fun hashCode(): Int {
+        return 31 * (post.id?.hashCode() ?: 0) + (user.id?.hashCode() ?: 0)
+    }
+}
+
 
 interface CommunityPostRepository : JpaRepository<CommunityPost, UUID> {
 
