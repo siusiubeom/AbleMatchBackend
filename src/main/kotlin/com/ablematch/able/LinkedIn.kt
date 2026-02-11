@@ -53,9 +53,19 @@ class UserPublicProfile(
     var isPublic: Boolean = true
 )
 
+data class PublicProfileView(
+    val userId: UUID,
+    val name: String,
+    val headline: String?,
+    val bio: String?,
+    val profileImageUrl: String?,
+    val skills: String?
+)
+
 
 interface UserPublicProfileRepository : JpaRepository<UserPublicProfile, UUID> {
     fun findByUser(user: User): UserPublicProfile?
+    fun findAllByIsPublicTrue(): List<UserPublicProfile>
 }
 
 
@@ -68,9 +78,53 @@ data class PublicProfileUpdateRequest(
     val skills: String?
 )
 
-/* =========================
-   CONTROLLER
-   ========================= */
+@RestController
+@RequestMapping("/api/public-profile")
+class PublicProfileViewController(
+    private val userRepository: UserRepository,
+    private val profileRepo: UserProfileRepository,
+    private val publicRepo: UserPublicProfileRepository
+) {
+
+    @GetMapping("/{userId}")
+    fun getPublicProfile(@PathVariable userId: UUID): PublicProfileView {
+
+        val user = userRepository.findById(userId)
+            .orElseThrow { RuntimeException("User not found") }
+
+        val base = profileRepo.findByUser(user)
+            ?: throw RuntimeException("No base profile")
+
+        val public = publicRepo.findByUser(user)
+
+        return PublicProfileView(
+            userId = user.id!!,
+            name = base.name,
+            headline = public?.headline ?: base.preferredRole,
+            bio = public?.bio,
+            profileImageUrl = base.profileImageUrl,
+            skills = public?.skills
+        )
+    }
+
+    @GetMapping("/list")
+    fun listPublicProfiles(): List<PublicProfileView> {
+        return publicRepo.findAllByIsPublicTrue().take(10).map { public ->
+
+            val base = profileRepo.findByUser(public.user)!!
+
+            PublicProfileView(
+                userId = public.user.id!!,
+                name = base.name,
+                headline = public.headline ?: base.preferredRole,
+                bio = public.bio,
+                profileImageUrl = base.profileImageUrl,
+                skills = public.skills
+            )
+        }
+    }
+}
+
 
 @RestController
 @RequestMapping("/api/me/public-profile")
