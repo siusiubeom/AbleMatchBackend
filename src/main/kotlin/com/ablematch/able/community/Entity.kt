@@ -1,5 +1,4 @@
 package com.ablematch.able.community
-
 import com.ablematch.able.auth.User
 import com.ablematch.able.auth.UserRepository
 import jakarta.persistence.CascadeType
@@ -12,6 +11,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -126,6 +126,7 @@ class CommunityController(
     private val commentRepo: CommentRepository,
     private val likeRepo: PostLikeRepository,
 ) {
+    private val log = LoggerFactory.getLogger(CommunityController::class.java)
 
     @PostMapping("/post")
     fun createPost(
@@ -249,35 +250,55 @@ class CommunityController(
     @Transactional
     fun feed(@AuthenticationPrincipal user: UserDetails?): List<FeedPostDto> {
 
-        val currentUser = user?.let { userRepo.findByEmail(it.username) }
+        log.info("FEED start user={}", user?.username)
 
-        val likedPostIds: Set<UUID> =
-            currentUser?.id?.let { uid ->
-                likeRepo.findByUserId(uid)
-                    .mapNotNull { it.post.id }
-                    .toSet()
-            } ?: emptySet()
+        try {
+            val currentUser = user?.let { userRepo.findByEmail(it.username) }
+            log.info("Current user loaded={}", currentUser?.id)
 
-        return postRepo.findAllByOrderByCreatedAtDesc()
-            .map { post ->
+            val likedPostIds: Set<UUID> =
+                currentUser?.id?.let { uid ->
+                    log.info("Loading likes for {}", uid)
+                    likeRepo.findByUserId(uid)
+                        .mapNotNull { it.post.id }
+                        .toSet()
+                } ?: emptySet()
 
-                val profile = post.user.profile
+            val posts = postRepo.findAllByOrderByCreatedAtDesc()
+            log.info("Posts fetched count={}", posts.size)
 
-                FeedPostDto(
-                    id = post.id!!,
-                    authorName = profile?.name ?: post.user.email,
-                    authorEmail = post.user.email,
-                    authorProfileImage = profile?.profileImageUrl,
-                    content = post.content,
-                    imageUrls = post.imageUrls,
-                    likeCount = post.likes.size,
-                    commentCount = post.comments.size,
-                    createdAt = post.createdAt,
-                    isOwner = currentUser?.email == post.user.email,
-                    isLikedByMe = post.id in likedPostIds
-                )
+            return posts.map { post ->
+                try {
+                    log.info("Mapping post {}", post.id)
+
+                    val profile = post.user.profile
+
+                    FeedPostDto(
+                        id = post.id!!,
+                        authorName = profile?.name ?: post.user.email,
+                        authorEmail = post.user.email,
+                        authorProfileImage = profile?.profileImageUrl,
+                        content = post.content,
+                        imageUrls = post.imageUrls,
+                        likeCount = post.likes.size,
+                        commentCount = post.comments.size,
+                        createdAt = post.createdAt,
+                        isOwner = currentUser?.email == post.user.email,
+                        isLikedByMe = post.id in likedPostIds
+                    )
+
+                } catch (e: Exception) {
+                    log.error("POST MAP ERROR id={}", post.id, e)
+                    throw e
+                }
             }
+
+        } catch (e: Exception) {
+            log.error("FEED FATAL ERROR", e)
+            throw e
+        }
     }
+
 
 
     @PostMapping("/{postId}/like")
